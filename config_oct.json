@@ -1,0 +1,76 @@
+{
+  "tipo_exame": "OCT",
+  "nome_exibicao": "Tomografia de Coerência Óptica (OCT)",
+  "versao_config": "2.0",
+  "descricao": "Configuração de campos, validações e prompt de extração para laudos de OCT (protocolo Zeiss Cirrus: Mácula/Retina + Nervo Óptico/RNFL + Complexo de Células Ganglionares). Um exame completo normalmente é composto por vários PDFs (um por protocolo de varredura) exportados pelo equipamento — o sistema combina todos eles em um único laudo. Copie este arquivo como modelo para criar configurações de outros exames (ex: config_campo_visual.json, config_topografia.json, config_biometria.json).",
+
+  "modelo_claude": "claude-sonnet-5",
+
+  "medico_responsavel": {
+    "nome": "Dr. Robson Silva Franco",
+    "crm": "CRM/MG 32.320"
+  },
+
+  "prompt_extracao_base": "Você é um assistente especializado em oftalmologia que auxilia um médico oftalmologista a transcrever dados de um exame de Tomografia de Coerência Óptica (OCT), equipamento Zeiss Cirrus. O exame completo é composto por um ou mais arquivos PDF (impressões do equipamento), cada um referente a um protocolo de varredura diferente (ex: Macular Cube - Macular Thickness, Macular Cube - Ganglion Cell, Optic Disc Cube - ONH and RNFL, HD 5 Line Raster). Os arquivos foram convertidos em imagens (uma por página) e são apresentados a seguir, cada um identificado pelo nome do arquivo de origem. A maior parte dos valores numéricos aparece apenas nos mapas/gráficos coloridos (não como texto simples), então leia com atenção os números impressos dentro desses mapas. Analise cuidadosamente todas as imagens fornecidas antes de responder. Não faça diagnóstico nem interpretação clínica: apenas transcreva fielmente os dados numéricos e textuais exibidos no exame. Se um campo pertence a um protocolo cujo PDF não foi fornecido, retorne null para ele — não invente.",
+
+  "campos": [
+    { "id": "nome_paciente", "rotulo": "Nome do Paciente", "categoria": "identificacao", "tipo": "texto", "obrigatorio": true },
+    { "id": "data_nascimento", "rotulo": "Data de Nascimento", "categoria": "identificacao", "tipo": "data", "obrigatorio": true },
+    { "id": "prontuario", "rotulo": "Número do Prontuário / ID", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false },
+    { "id": "data_exame", "rotulo": "Data do Exame", "categoria": "identificacao", "tipo": "data", "obrigatorio": true },
+    { "id": "equipamento", "rotulo": "Modelo/Marca do Equipamento", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false, "exemplos": ["ZEISS CIRRUS HD-OCT", "Heidelberg Spectralis", "Topcon Triton"] },
+    { "id": "qualidade_sinal_od", "rotulo": "Qualidade do Sinal (Signal Strength) - OD", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false, "exemplos": ["7/10"] },
+    { "id": "qualidade_sinal_os", "rotulo": "Qualidade do Sinal (Signal Strength) - OS", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false, "exemplos": ["7/10"] },
+
+    { "id": "cst_od", "rotulo": "Espessura Central Foveal - CST - OD", "categoria": "macula_retina", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Macular Cube - Macular Thickness OU Analysis" },
+    { "id": "cst_os", "rotulo": "Espessura Central Foveal - CST - OS", "categoria": "macula_retina", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Macular Cube - Macular Thickness OU Analysis" },
+    { "id": "volume_macular_od", "rotulo": "Volume Macular Total - OD", "categoria": "macula_retina", "tipo": "numero", "obrigatorio": false, "unidade": "mm³", "origem": "Macular Cube - Macular Thickness OU Analysis" },
+    { "id": "volume_macular_os", "rotulo": "Volume Macular Total - OS", "categoria": "macula_retina", "tipo": "numero", "obrigatorio": false, "unidade": "mm³", "origem": "Macular Cube - Macular Thickness OU Analysis" },
+    { "id": "espessura_media_cubo_od", "rotulo": "Espessura Média do Cubo - OD", "categoria": "macula_retina", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Macular Cube - Macular Thickness OU Analysis" },
+    { "id": "espessura_media_cubo_os", "rotulo": "Espessura Média do Cubo - OS", "categoria": "macula_retina", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Macular Cube - Macular Thickness OU Analysis" },
+    { "id": "descricao_macula_retina", "rotulo": "Descrição - Mácula/Retina (Ambos os Olhos)", "categoria": "macula_retina", "tipo": "texto_longo", "obrigatorio": false, "origem": "Macular Cube (Thickness) + HD 5 Line Raster OD/OS" },
+
+    { "id": "rnfl_medio_od", "rotulo": "RNFL Média (Global) - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "rnfl_medio_os", "rotulo": "RNFL Média (Global) - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "rnfl_superior_od", "rotulo": "RNFL Quadrante Superior - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "rnfl_superior_os", "rotulo": "RNFL Quadrante Superior - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "rnfl_inferior_od", "rotulo": "RNFL Quadrante Inferior - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "rnfl_inferior_os", "rotulo": "RNFL Quadrante Inferior - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "rnfl_nasal_od", "rotulo": "RNFL Quadrante Nasal - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "rnfl_nasal_os", "rotulo": "RNFL Quadrante Nasal - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "rnfl_temporal_od", "rotulo": "RNFL Quadrante Temporal - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "rnfl_temporal_os", "rotulo": "RNFL Quadrante Temporal - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "rnfl_simetria", "rotulo": "Simetria de RNFL Entre os Olhos (%)", "categoria": "nervo_optico", "tipo": "texto", "obrigatorio": false, "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "area_disco_od", "rotulo": "Área do Disco - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "mm²", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "area_disco_os", "rotulo": "Área do Disco - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "mm²", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "area_rima_od", "rotulo": "Área da Rima (Rim Area) - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "mm²", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "area_rima_os", "rotulo": "Área da Rima (Rim Area) - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "mm²", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "cd_medio_od", "rotulo": "Relação Escavação/Disco Média (C/D) - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "cd_medio_os", "rotulo": "Relação Escavação/Disco Média (C/D) - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "cd_vertical_od", "rotulo": "Relação C/D Vertical - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "cd_vertical_os", "rotulo": "Relação C/D Vertical - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "volume_escavacao_od", "rotulo": "Volume da Escavação (Cup Volume) - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "mm³", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "volume_escavacao_os", "rotulo": "Volume da Escavação (Cup Volume) - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "mm³", "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+    { "id": "descricao_nervo_optico", "rotulo": "Descrição - Nervo Óptico/Glaucoma (Ambos os Olhos)", "categoria": "nervo_optico", "tipo": "texto_longo", "obrigatorio": false, "origem": "Optic Disc Cube - ONH and RNFL OU Analysis" },
+
+    { "id": "gcl_ipl_media_od", "rotulo": "Espessura Média GCL-IPL - OD", "categoria": "ganglion_cell", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Macular Cube - Ganglion Cell OU Analysis" },
+    { "id": "gcl_ipl_media_os", "rotulo": "Espessura Média GCL-IPL - OS", "categoria": "ganglion_cell", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Macular Cube - Ganglion Cell OU Analysis" },
+    { "id": "gcl_ipl_minima_od", "rotulo": "Espessura Mínima GCL-IPL - OD", "categoria": "ganglion_cell", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Macular Cube - Ganglion Cell OU Analysis" },
+    { "id": "gcl_ipl_minima_os", "rotulo": "Espessura Mínima GCL-IPL - OS", "categoria": "ganglion_cell", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Macular Cube - Ganglion Cell OU Analysis" }
+  ],
+
+  "campos_calculados_automaticamente": {
+    "descricao": "Estes campos NÃO são pedidos à IA — são calculados pelo próprio programa (main.py), de forma determinística, a partir dos outros dados. Ver classe GeradorLaudoOCT.",
+    "idade": "Calculada a partir de data_nascimento e data_exame.",
+    "protocolo": "Montada a partir dos nomes dos arquivos PDF fornecidos (quais protocolos de varredura foram incluídos no exame).",
+    "data_geracao_laudo": "Data/hora em que o laudo foi gerado pelo programa.",
+    "nome_medico": "Vem de 'medico_responsavel.nome' neste arquivo.",
+    "crm_medico": "Vem de 'medico_responsavel.crm' neste arquivo."
+  },
+
+  "opcoes_extracao": {
+    "max_paginas_por_pdf": 2,
+    "dpi_imagem": 200,
+    "max_tokens_resposta": 3072
+  }
+}

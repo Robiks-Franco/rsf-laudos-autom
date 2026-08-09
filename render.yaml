@@ -1,0 +1,23 @@
+# Arquivo de configuração para publicar este aplicativo no Render.com
+# de forma automática ("Blueprint"). Veja o passo a passo completo em
+# README_WEB.md — você não precisa entender este arquivo, só enviá-lo
+# junto com os outros para o GitHub; o Render lê ele sozinho.
+#
+# As duas variáveis marcadas com "sync: false" (ANTHROPIC_API_KEY e
+# SENHA_ACESSO) são secretas: o Render vai pedir para você digitá-las
+# no painel dele, e não ficam salvas neste arquivo nem no GitHub.
+
+services:
+  - type: web
+    name: laudos-oct-ocular-oftalmologia
+    runtime: python
+    plan: starter
+    buildCommand: "pip install -r requirements_web.txt"
+    startCommand: "uvicorn app_web:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SENHA_ACESSO
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11.9"

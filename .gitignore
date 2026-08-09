@@ -1,0 +1,15 @@
+# Nunca suba chaves/senhas para o GitHub
+.env
+
+# Pastas de saída/dados de pacientes (não devem ir para o repositório)
+laudos_gerados/
+exemplo/laudo_exemplo.docx
+exemplo/laudo_exemplo_dados.json
+
+# Arquivos temporários do Python
+__pycache__/
+*.pyc
+
+# Arquivos temporários de editores/sistema
+.DS_Store
+Thumbs.db
