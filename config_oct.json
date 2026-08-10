@@ -18,6 +18,8 @@
     ["HD 5 Line Raster", "Cortes de Alta Definição (HD Raster)"]
   ],
 
+  "palavras_chave_verificacao": ["zeiss", "cirrus"],
+
   "prompt_extracao_base": "Você é um assistente especializado em oftalmologia que auxilia um médico oftalmologista a transcrever dados de um exame de Tomografia de Coerência Óptica (OCT), equipamento Zeiss Cirrus. O exame completo é composto por um ou mais arquivos PDF (impressões do equipamento), cada um referente a um protocolo de varredura diferente (ex: Macular Cube - Macular Thickness, Macular Cube - Ganglion Cell, Optic Disc Cube - ONH and RNFL, HD 5 Line Raster). Os arquivos foram convertidos em imagens (uma por página) e são apresentados a seguir, cada um identificado pelo nome do arquivo de origem. A maior parte dos valores numéricos aparece apenas nos mapas/gráficos coloridos (não como texto simples), então leia com atenção os números impressos dentro desses mapas. Analise cuidadosamente todas as imagens fornecidas antes de responder. Não faça diagnóstico nem interpretação clínica: apenas transcreva fielmente os dados numéricos e textuais exibidos no exame. Se um campo pertence a um protocolo cujo PDF não foi fornecido, retorne null para ele — não invente.",
 
   "campos": [

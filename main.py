@@ -125,22 +125,33 @@ class InterfaceGrafica:
         quadro_equipamento = tk.Frame(self.raiz, padx=16, pady=8)
         quadro_equipamento.pack(fill="x")
 
+        linha_equipamento = tk.Frame(quadro_equipamento)
+        linha_equipamento.pack(fill="x")
+
         tk.Label(
-            quadro_equipamento, text="Equipamento:", font=fonte_normal
+            linha_equipamento, text="Equipamento:", font=fonte_normal
         ).pack(side="left")
 
         nomes_equipamentos = [
             EQUIPAMENTOS_SUPORTADOS[chave]["nome_exibicao"] for chave in self.chaves_equipamentos
         ]
         self.combo_equipamento = ttk.Combobox(
-            quadro_equipamento,
+            linha_equipamento,
             values=nomes_equipamentos,
             state="readonly",
-            width=30,
+            width=34,
         )
         self.combo_equipamento.current(0)
         self.combo_equipamento.bind("<<ComboboxSelected>>", self._ao_trocar_equipamento)
         self.combo_equipamento.pack(side="left", padx=8)
+
+        tk.Label(
+            quadro_equipamento,
+            text="⚠ Confira se este é o mesmo equipamento dos PDFs selecionados abaixo "
+                 "antes de gerar o laudo.",
+            font=("Segoe UI", 8),
+            fg="#8A6D00",
+        ).pack(anchor="w", pady=(3, 0))
 
         quadro_arquivo = tk.Frame(self.raiz, padx=16, pady=8)
         quadro_arquivo.pack(fill="x")

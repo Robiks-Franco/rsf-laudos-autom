@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Laudos OCT — Ocular Oftalmologia</title>
+<style>
+  :root {
+    --azul: #1F3A5F;
+    --azul-claro: #E8EDF4;
+    --cinza-texto: #333333;
+    --cinza-claro: #767676;
+    --vermelho: #B3261E;
+    --verde: #1E7B34;
+    --raio: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #F4F6F9;
+    color: var(--cinza-texto);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+  }
+  .cartao {
+    background: #FFFFFF;
+    border-radius: var(--raio);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    padding: 24px 20px;
+    width: 100%;
+    max-width: 440px;
+  }
+  header.topo {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  header.topo h1 {
+    color: var(--azul);
+    font-size: 1.35rem;
+    margin: 0 0 2px;
+  }
+  header.topo p {
+    color: var(--cinza-claro);
+    font-size: 0.85rem;
+    margin: 0;
+  }
+  h2.subtitulo {
+    font-size: 1.05rem;
+    color: var(--azul);
+    margin: 0 0 14px;
+  }
+  label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--azul);
+  }
+  input[type="password"],
+  input[type="text"],
+  select {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 16px; /* evita zoom automático no iOS */
+    border: 1px solid #CCD3DD;
+    border-radius: var(--raio);
+    margin-bottom: 14px;
+    background: #FFFFFF;
+    color: var(--cinza-texto);
+    font-family: inherit;
+  }
+  .linha-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 18px;
+    font-size: 0.88rem;
+    color: var(--cinza-texto);
+  }
+  .linha-checkbox input { width: 18px; height: 18px; }
+
+  button {
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--raio);
+    background: var(--azul);
+    color: #FFFFFF;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  button:disabled { opacity: 0.55; cursor: not-allowed; }
+  button.secundario {
+    background: transparent;
+    color: var(--azul);
+    border: 1px solid var(--azul);
+    margin-top: 10px;
+  }
+
+  .area-upload {
+    border: 2px dashed #B7C2D0;
+    border-radius: var(--raio);
+    padding: 20px 14px;
+    text-align: center;
+    margin-bottom: 14px;
+    background: #FAFBFD;
+  }
+  .area-upload input[type="file"] { display: none; }
+  .area-upload label.botao-arquivo {
+    display: inline-block;
+    background: var(--azul-claro);
+    color: var(--azul);
+    font-weight: 600;
+    padding: 10px 18px;
+    border-radius: var(--raio);
+    cursor: pointer;
+    font-size: 0.92rem;
+  }
+  .area-upload p.dica {
+    font-size: 0.78rem;
+    color: var(--cinza-claro);
+    margin: 10px 0 0;
+  }
+
+  ul#lista-arquivos {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 16px;
+    font-size: 0.85rem;
+  }
+  ul#lista-arquivos li {
+    padding: 8px 10px;
+    background: var(--azul-claro);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    color: var(--azul);
+    word-break: break-all;
+  }
+
+  #area-status {
+    display: none;
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--azul);
+    margin: 14px 0;
+  }
+  .spinner {
+    border: 3px solid var(--azul-claro);
+    border-top: 3px solid var(--azul);
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    animation: girar 0.8s linear infinite;
+    margin: 0 auto 10px;
+  }
+  @keyframes girar { to { transform: rotate(360deg); } }
+
+  .caixa-mensagem {
+    border-radius: var(--raio);
+    padding: 14px;
+    font-size: 0.88rem;
+    margin-top: 14px;
+    display: none;
+  }
+  .caixa-mensagem.erro {
+    background: #FBEAE9;
+    color: var(--vermelho);
+    border: 1px solid #F1C1BE;
+    white-space: pre-line;
+  }
+  .caixa-mensagem.sucesso {
+    background: #EAF6ED;
+    color: var(--verde);
+    border: 1px solid #C6E6CC;
+  }
+  .caixa-mensagem ul { margin: 8px 0 0; padding-left: 18px; }
+
+  footer.rodape {
+    text-align: center;
+    margin-top: 18px;
+  }
+  footer.rodape a {
+    color: var(--cinza-claro);
+    font-size: 0.82rem;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+  <!-- ================= TELA DE LOGIN (senha de acesso) ================= -->
+  <div class="cartao" id="tela-login">
+    <header class="topo">
+      <h1>OCULAR OFTALMOLOGIA</h1>
+      <p>Automação de Laudos de OCT</p>
+    </header>
+    <h2 class="subtitulo">Acesso</h2>
+    <label for="campo-senha">Senha de acesso</label>
+    <input type="password" id="campo-senha" placeholder="Digite a senha" autocomplete="current-password">
+    <div class="linha-checkbox">
+      <input type="checkbox" id="campo-lembrar" checked>
+      <label for="campo-lembrar" style="margin:0; font-weight:400; color:var(--cinza-texto);">
+        Lembrar neste aparelho
+      </label>
+    </div>
+    <button id="botao-entrar">Entrar</button>
+    <div class="caixa-mensagem erro" id="mensagem-login"></div>
+  </div>
+
+  <!-- ================= TELA PRINCIPAL (upload + geração) ================= -->
+  <div class="cartao" id="tela-principal" style="display:none;">
+    <header class="topo">
+      <h1>OCULAR OFTALMOLOGIA</h1>
+      <p>Automação de Laudos de OCT</p>
+    </header>
+
+    <h2 class="subtitulo">Gerar laudo de OCT</h2>
+    <p style="font-size:0.85rem; color:var(--cinza-claro); margin-top:-8px;">
+      Selecione o equipamento e TODOS os PDFs do exame (o exame normalmente
+      exporta vários arquivos, um por protocolo de varredura).
+      O sistema combina todos em um único laudo.
+    </p>
+
+    <label for="campo-equipamento">Equipamento / Exame</label>
+    <select id="campo-equipamento"></select>
+    <p style="font-size:0.78rem; color:#8A6D00; margin:-8px 0 14px; font-weight:600;">
+      ⚠ Confira se este é o mesmo equipamento dos PDFs que você vai enviar.
+    </p>
+
+    <div class="area-upload">
+      <input type="file" id="input-arquivos" accept="application/pdf" multiple>
+      <label for="input-arquivos" class="botao-arquivo">Escolher PDFs do exame</label>
+      <p class="dica">Você pode selecionar vários arquivos de uma vez</p>
+    </div>
+
+    <ul id="lista-arquivos"></ul>
+
+    <button id="botao-gerar" disabled>Gerar Laudo</button>
+
+    <div id="area-status">
+      <div class="spinner"></div>
+      <span id="texto-status">Processando...</span>
+    </div>
+
+    <div class="caixa-mensagem sucesso" id="mensagem-sucesso"></div>
+    <div class="caixa-mensagem erro" id="mensagem-erro"></div>
+
+    <footer class="rodape">
+      <a id="link-sair">Trocar senha / sair</a>
+    </footer>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  var CHAVE_LOCALSTORAGE = "laudos_oct_senha";
+  var senhaAtual = null;
+  var arquivosSelecionados = [];
+
+  var telaLogin = document.getElementById("tela-login");
+  var telaPrincipal = document.getElementById("tela-principal");
+  var campoSenha = document.getElementById("campo-senha");
+  var campoLembrar = document.getElementById("campo-lembrar");
+  var botaoEntrar = document.getElementById("botao-entrar");
+  var mensagemLogin = document.getElementById("mensagem-login");
+
+  var inputArquivos = document.getElementById("input-arquivos");
+  var listaArquivos = document.getElementById("lista-arquivos");
+  var botaoGerar = document.getElementById("botao-gerar");
+  var areaStatus = document.getElementById("area-status");
+  var textoStatus = document.getElementById("texto-status");
+  var mensagemSucesso = document.getElementById("mensagem-sucesso");
+  var mensagemErro = document.getElementById("mensagem-erro");
+  var linkSair = document.getElementById("link-sair");
+  var campoEquipamento = document.getElementById("campo-equipamento");
+
+  // Busca a lista de equipamentos suportados no servidor e monta o
+  // seletor. Se um equipamento novo for adicionado no servidor
+  // (nucleo_laudo.py), ele passa a aparecer aqui automaticamente.
+  function carregarEquipamentos() {
+    fetch("/api/equipamentos")
+      .then(function (resposta) { return resposta.json(); })
+      .then(function (dados) {
+        campoEquipamento.innerHTML = "";
+        (dados.equipamentos || []).forEach(function (equipamento) {
+          var opcao = document.createElement("option");
+          opcao.value = equipamento.chave;
+          opcao.textContent = equipamento.nome_exibicao;
+          campoEquipamento.appendChild(opcao);
+        });
+        if (dados.padrao) campoEquipamento.value = dados.padrao;
+      })
+      .catch(function () {
+        // Se a lista não puder ser carregada, mantém um item padrão
+        // para o formulário continuar funcional.
+        campoEquipamento.innerHTML = "<option value=\"zeiss\">Zeiss Cirrus HD-OCT</option>";
+      });
+  }
+  carregarEquipamentos();
+
+  function mostrarTelaPrincipal() {
+    telaLogin.style.display = "none";
+    telaPrincipal.style.display = "block";
+  }
+
+  function mostrarTelaLogin(mensagem) {
+    telaPrincipal.style.display = "none";
+    telaLogin.style.display = "block";
+    if (mensagem) {
+      mensagemLogin.textContent = mensagem;
+      mensagemLogin.style.display = "block";
+    } else {
+      mensagemLogin.style.display = "none";
+    }
+  }
+
+  // Se já existe uma senha salva neste aparelho, pula direto para a tela principal.
+  var senhaSalva = localStorage.getItem(CHAVE_LOCALSTORAGE);
+  if (senhaSalva) {
+    senhaAtual = senhaSalva;
+    mostrarTelaPrincipal();
+  }
+
+  botaoEntrar.addEventListener("click", function () {
+    var valor = campoSenha.value.trim();
+    if (!valor) {
+      mensagemLogin.textContent = "Digite a senha de acesso.";
+      mensagemLogin.style.display = "block";
+      return;
+    }
+    senhaAtual = valor;
+    if (campoLembrar.checked) {
+      localStorage.setItem(CHAVE_LOCALSTORAGE, valor);
+    }
+    campoSenha.value = "";
+    mostrarTelaPrincipal();
+  });
+
+  campoSenha.addEventListener("keydown", function (evento) {
+    if (evento.key === "Enter") botaoEntrar.click();
+  });
+
+  linkSair.addEventListener("click", function () {
+    localStorage.removeItem(CHAVE_LOCALSTORAGE);
+    senhaAtual = null;
+    arquivosSelecionados = [];
+    listaArquivos.innerHTML = "";
+    botaoGerar.disabled = true;
+    inputArquivos.value = "";
+    mostrarTelaLogin(null);
+  });
+
+  inputArquivos.addEventListener("change", function () {
+    arquivosSelecionados = Array.prototype.slice.call(inputArquivos.files);
+    listaArquivos.innerHTML = "";
+    arquivosSelecionados.forEach(function (arquivo) {
+      var item = document.createElement("li");
+      item.textContent = arquivo.name;
+      listaArquivos.appendChild(item);
+    });
+    botaoGerar.disabled = arquivosSelecionados.length === 0;
+    mensagemSucesso.style.display = "none";
+    mensagemErro.style.display = "none";
+  });
+
+  function extrairNomeArquivo(cabecalhoContentDisposition) {
+    if (!cabecalhoContentDisposition) return "laudo_oct.docx";
+    var casamento = /filename="?([^";]+)"?/.exec(cabecalhoContentDisposition);
+    return casamento ? casamento[1] : "laudo_oct.docx";
+  }
+
+  botaoGerar.addEventListener("click", function () {
+    if (arquivosSelecionados.length === 0) return;
+
+    mensagemSucesso.style.display = "none";
+    mensagemErro.style.display = "none";
+    botaoGerar.disabled = true;
+    inputArquivos.disabled = true;
+    areaStatus.style.display = "block";
+    textoStatus.textContent =
+      "Enviando " + arquivosSelecionados.length + " arquivo(s) e gerando o laudo — " +
+      "isso pode levar até 1 minuto...";
+
+    var dadosFormulario = new FormData();
+    dadosFormulario.append("senha", senhaAtual);
+    dadosFormulario.append("equipamento", campoEquipamento.value);
+    arquivosSelecionados.forEach(function (arquivo) {
+      dadosFormulario.append("arquivos", arquivo, arquivo.name);
+    });
+
+    fetch("/api/gerar-laudo", { method: "POST", body: dadosFormulario })
+      .then(function (resposta) {
+        if (resposta.status === 401) {
+          localStorage.removeItem(CHAVE_LOCALSTORAGE);
+          throw { tipo: "senha" };
+        }
+        if (!resposta.ok) {
+          return resposta.json().then(function (corpo) {
+            var detalhe = corpo && corpo.detail;
+            var mensagem = (typeof detalhe === "string" && detalhe)
+              ? detalhe
+              : "Não foi possível gerar o laudo. Confira se selecionou os PDFs corretos e tente novamente.";
+            throw { tipo: "erro", mensagem: mensagem };
+          }, function () {
+            throw { tipo: "erro", mensagem: "Erro ao gerar o laudo (resposta inesperada do servidor)." };
+          });
+        }
+        var nomeArquivo = extrairNomeArquivo(resposta.headers.get("Content-Disposition"));
+        var avisosCodificados = resposta.headers.get("X-Avisos") || "";
+        var avisos = avisosCodificados ? decodeURIComponent(avisosCodificados).split(" | ") : [];
+        return resposta.blob().then(function (blob) {
+          return { blob: blob, nomeArquivo: nomeArquivo, avisos: avisos };
+        });
+      })
+      .then(function (resultado) {
+        if (!resultado) return;
+
+        // Dispara o download do .docx automaticamente — no computador
+        // ele vai para a pasta de Downloads; no celular/tablet, o
+        // sistema normalmente oferece para abrir direto no Word,
+        // Google Docs ou app similar instalado.
+        var url = URL.createObjectURL(resultado.blob);
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = resultado.nomeArquivo;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+
+        var html = "<strong>Laudo gerado com sucesso!</strong><br>" +
+          "O download de <em>" + resultado.nomeArquivo + "</em> deve começar automaticamente. " +
+          "Se não abrir sozinho, procure o arquivo baixado e toque nele para abrir no Word.";
+        if (resultado.avisos.length > 0) {
+          html += "<br><br><strong>Avisos:</strong><ul>";
+          resultado.avisos.forEach(function (aviso) {
+            html += "<li>" + aviso + "</li>";
+          });
+          html += "</ul>";
+        }
+        mensagemSucesso.innerHTML = html;
+        mensagemSucesso.style.display = "block";
+      })
+      .catch(function (erro) {
+        if (erro && erro.tipo === "senha") {
+          mostrarTelaLogin("Senha incorreta. Digite novamente.");
+          return;
+        }
+        var mensagem = (erro && erro.mensagem) || "Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.";
+        mensagemErro.textContent = mensagem;
+        mensagemErro.style.display = "block";
+      })
+      .finally(function () {
+        botaoGerar.disabled = arquivosSelecionados.length === 0;
+        inputArquivos.disabled = false;
+        areaStatus.style.display = "none";
+      });
+  });
+})();
+</script>
+</body>
+</html>

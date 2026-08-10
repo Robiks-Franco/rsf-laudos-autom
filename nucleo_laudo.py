@@ -349,6 +349,18 @@ class ExamConfig:
         pares = self.dados_config.get("protocolos_por_palavra_chave", [])
         return [tuple(par) for par in pares]
 
+    @property
+    def palavras_chave_verificacao(self) -> list:
+        """
+        Lista de palavras-chave (em minúsculas) que devem aparecer no
+        texto do campo 'equipamento' lido pela IA diretamente do exame,
+        usada como confirmação de que os PDFs enviados realmente são
+        deste equipamento — proteção contra o usuário selecionar o
+        equipamento errado no seletor (ex: enviar PDFs do Pentacam com
+        'Zeiss Cirrus' escolhido no aplicativo). Ver ValidadorDados.
+        """
+        return [p.lower() for p in self.dados_config.get("palavras_chave_verificacao", [])]
+
     # ---------------- Métodos utilitários ----------------
     def obter_campo(self, campo_id: str) -> dict:
         """Retorna a definição de um campo específico pelo seu id."""
@@ -667,6 +679,8 @@ class ValidadorDados:
         campo obrigatório estiver ausente. Retorna uma lista de avisos
         (não bloqueantes) para inconsistências menores.
         """
+        self._verificar_equipamento_correto(dados)
+
         campos_faltantes = []
         for campo_id in self.config.campos_obrigatorios():
             valor = dados.get(campo_id)
@@ -694,6 +708,43 @@ class ValidadorDados:
                         f"esperado {valores_permitidos}. Confira manualmente."
                     )
         return avisos
+
+    def _verificar_equipamento_correto(self, dados: dict):
+        """
+        Confere se o texto de identificação do equipamento, lido pela IA
+        diretamente das imagens do exame (campo 'equipamento'), é
+        compatível com o equipamento selecionado no aplicativo. Isso
+        evita que um exame de um equipamento (ex: Pentacam) seja
+        processado com o modelo/config de outro (ex: Zeiss Cirrus) só
+        porque o usuário esqueceu de trocar o seletor — nesse caso, os
+        campos clínicos ficam todos em branco no laudo, o que é confuso
+        e só é percebido depois de já ter sido gerado.
+
+        Se o exame não tiver essa informação legível (campo vazio/null),
+        a verificação é pulada — não bloqueia o fluxo normal por causa
+        de uma imagem de baixa qualidade.
+        """
+        palavras_chave = self.config.palavras_chave_verificacao
+        if not palavras_chave:
+            return
+
+        texto_equipamento = str(dados.get("equipamento") or "").strip()
+        if not texto_equipamento or texto_equipamento.lower() == "null":
+            return
+
+        texto_lower = texto_equipamento.lower()
+        if any(palavra in texto_lower for palavra in palavras_chave):
+            return
+
+        raise ErroValidacaoDados(
+            f"Os PDFs selecionados podem não ser do equipamento escolhido "
+            f"('{self.config.nome_exibicao}'). O texto de identificação do "
+            f"equipamento lido dentro do próprio exame foi: '{texto_equipamento}'.\n\n"
+            "Verifique se você selecionou o equipamento correto no seletor do "
+            "aplicativo antes de gerar o laudo (ex: se o exame é do Pentacam, "
+            "selecione 'Pentacam® (Oculus)', não 'Zeiss Cirrus HD-OCT' ou "
+            "'Nidek RS-3000 Advance'), e gere o laudo novamente."
+        )
 
 
 # ===================================================================
