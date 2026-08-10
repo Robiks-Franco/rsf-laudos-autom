@@ -441,6 +441,14 @@ class PDFExtractor:
         self.dpi_imagem = opcoes.get("dpi_imagem", 200)
         self.max_paginas_por_pdf = opcoes.get("max_paginas_por_pdf", 2)
         self.max_tokens_resposta = opcoes.get("max_tokens_resposta", 3072)
+        # As imagens são enviadas em JPEG (não PNG): mapas/gráficos de OCT
+        # são cheios de gradientes coloridos, que o PNG comprime muito mal
+        # (arquivos de 4-6 MB por página não é incomum) — isso pode fazer o
+        # pedido ultrapassar o limite de tamanho da API da Anthropic quando
+        # o exame tem vários PDFs (erro HTTP 413 "request_too_large"). Em
+        # JPEG, com qualidade alta, o mesmo conteúdo fica 5-7x menor sem
+        # perda perceptível de legibilidade dos números.
+        self.qualidade_jpeg = opcoes.get("qualidade_jpeg", 85)
 
         chave = chave_api or os.environ.get("ANTHROPIC_API_KEY")
         if not chave:
@@ -464,9 +472,12 @@ class PDFExtractor:
 
     def _converter_paginas_em_imagens(self, caminho_pdf: Path) -> list:
         """
-        Converte as páginas do PDF em imagens PNG (base64), pois a
+        Converte as páginas do PDF em imagens JPEG (base64), pois a
         maior parte dos valores de um exame de OCT aparece dentro de
         mapas/gráficos coloridos (imagem), não como texto selecionável.
+        JPEG é usado em vez de PNG por comprimir muito melhor esse tipo
+        de conteúdo (gradientes de cor), mantendo o pedido dentro do
+        limite de tamanho da API mesmo com vários PDFs no mesmo exame.
         """
         imagens_base64 = []
         try:
@@ -477,7 +488,7 @@ class PDFExtractor:
                     if indice >= self.max_paginas_por_pdf:
                         break
                     pixmap = pagina.get_pixmap(matrix=matriz)
-                    imagem_bytes = pixmap.tobytes("png")
+                    imagem_bytes = pixmap.tobytes("jpg", jpg_quality=self.qualidade_jpeg)
                     imagens_base64.append(base64.b64encode(imagem_bytes).decode("utf-8"))
             return imagens_base64
         except Exception as erro:
@@ -485,7 +496,7 @@ class PDFExtractor:
                 f"Falha ao converter as páginas do PDF '{caminho_pdf.name}' em imagem: {erro}"
             )
 
-    def _parsear_json(self, texto_resposta: str) -> dict:
+    def _parsear_json(self, texto_resposta: str, motivo_parada: str = None) -> dict:
         """Extrai e valida o bloco JSON contido na resposta da IA."""
         texto = texto_resposta.strip()
 
@@ -498,17 +509,51 @@ class PDFExtractor:
         inicio = texto.find("{")
         fim = texto.rfind("}")
         if inicio == -1 or fim == -1:
+            # Diagnóstico: mostra um trecho da resposta real da IA (ou avisa
+            # se veio vazia), para dar pistas concretas do que aconteceu —
+            # em vez de só uma mensagem genérica.
+            if not texto:
+                detalhe = "A IA devolveu uma resposta vazia (nenhum texto)."
+            else:
+                trecho = texto[:600]
+                detalhe = f"Texto recebido da IA (trecho, para diagnóstico):\n\"{trecho}\""
+
+            dica_parada = ""
+            if motivo_parada and motivo_parada != "end_turn":
+                dica_parada = (
+                    f"\n\nMotivo de parada informado pela API: '{motivo_parada}'. "
+                    + (
+                        "Isso normalmente indica que a resposta foi cortada por atingir "
+                        "o limite de tokens — tente novamente enviando menos PDFs de uma "
+                        "vez, ou aumente 'max_tokens_resposta' no arquivo de configuração."
+                        if motivo_parada == "max_tokens"
+                        else "Verifique se o pedido não foi bloqueado por algum filtro de segurança."
+                    )
+                )
+
             raise ErroExtracaoPDF(
                 "A resposta da IA não contém um JSON reconhecível. "
-                "Tente novamente ou verifique a qualidade dos PDFs."
+                "Tente novamente ou verifique a qualidade dos PDFs.\n\n"
+                f"{detalhe}{dica_parada}"
             )
 
         bloco_json = texto[inicio: fim + 1]
         try:
             return json.loads(bloco_json)
         except json.JSONDecodeError as erro:
+            trecho = bloco_json[-400:] if len(bloco_json) > 400 else bloco_json
+            dica_parada = ""
+            if motivo_parada == "max_tokens":
+                dica_parada = (
+                    "\n\nA resposta parece ter sido cortada por atingir o limite de "
+                    "tokens (max_tokens) — tente novamente enviando menos PDFs de uma "
+                    "vez, ou aumente 'max_tokens_resposta' no arquivo de configuração "
+                    "deste equipamento."
+                )
             raise ErroExtracaoPDF(
-                f"Não foi possível interpretar o JSON retornado pela IA: {erro}"
+                f"Não foi possível interpretar o JSON retornado pela IA: {erro}\n\n"
+                f"Final do texto recebido (para diagnóstico):\n\"...{trecho}\""
+                f"{dica_parada}"
             )
 
     def extrair_dados(self, caminhos_pdfs) -> dict:
@@ -551,10 +596,35 @@ class PDFExtractor:
                     "type": "image",
                     "source": {
                         "type": "base64",
-                        "media_type": "image/png",
+                        "media_type": "image/jpeg",
                         "data": imagem_b64,
                     },
                 })
+
+        # Verificação proativa de tamanho: a API da Anthropic rejeita
+        # pedidos acima de um certo tamanho (erro HTTP 413
+        # "request_too_large"). Em vez de deixar o usuário receber esse
+        # erro técnico sem explicação, avisamos antes com uma sugestão
+        # prática (reduzir a resolução das imagens ou dividir o exame em
+        # duas gerações). O limite abaixo (25 MB de conteúdo base64) fica
+        # com folga do limite real da API, já que o texto do prompt e a
+        # própria requisição HTTP somam um pouco mais por cima.
+        tamanho_estimado_bytes = sum(
+            len(bloco.get("source", {}).get("data", "")) for bloco in conteudo_mensagem
+            if bloco.get("type") == "image"
+        )
+        if tamanho_estimado_bytes > 25_000_000:
+            raise ErroExtracaoPDF(
+                f"Os PDFs selecionados, convertidos em imagem, somam cerca de "
+                f"{tamanho_estimado_bytes / 1_000_000:.0f} MB — isso provavelmente "
+                "ultrapassa o limite de tamanho de pedido da API da Anthropic e "
+                "resultaria em erro 'request_too_large'.\n\n"
+                "Sugestões: (1) gere o laudo em duas etapas, selecionando menos "
+                "PDFs de cada vez e completando os campos manualmente depois, ou "
+                "(2) reduza o valor de 'dpi_imagem' no arquivo de configuração "
+                "deste equipamento (ex: de 220 para 150) para diminuir o tamanho "
+                "das imagens enviadas."
+            )
 
         try:
             resposta = self.cliente.messages.create(
@@ -571,7 +641,8 @@ class PDFExtractor:
         texto_resposta = "".join(
             bloco.text for bloco in resposta.content if hasattr(bloco, "text")
         )
-        return self._parsear_json(texto_resposta)
+        motivo_parada = getattr(resposta, "stop_reason", None)
+        return self._parsear_json(texto_resposta, motivo_parada=motivo_parada)
 
 
 # ===================================================================

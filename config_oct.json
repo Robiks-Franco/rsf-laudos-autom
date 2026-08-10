@@ -78,6 +78,7 @@
   "opcoes_extracao": {
     "max_paginas_por_pdf": 2,
     "dpi_imagem": 200,
+    "qualidade_jpeg": 85,
     "max_tokens_resposta": 3072
   }
 }
