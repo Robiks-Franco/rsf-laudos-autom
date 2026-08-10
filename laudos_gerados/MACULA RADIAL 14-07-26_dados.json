@@ -1,0 +1,72 @@
+{
+  "nome_paciente": "Rita de Souza Garcia Quintao",
+  "data_nascimento": "02/09/1958",
+  "idade": "67 anos e 10 meses",
+  "prontuario": "119017",
+  "data_exame": "14/07/2026",
+  "olho": "AO",
+  "equipamento": "Nidek RS-3000 OCT RetinaScan Advance",
+  "tipo_varredura": "Macula Radial 6 (6,0mm [1024 A-scans])",
+  "qualidade_imagem": "OD: SQI 5/5, SSI 10/10; OE: SQI 5/5, SSI 10/10",
+  "espessura_retina_central": "OD: 218 (mapa) / 218 (corte); OE: 235 (mapa) / 239 (corte)",
+  "espessura_retina_perifericas": {
+    "OD": {
+      "superior": [
+        315,
+        324
+      ],
+      "superior_lateral": [
+        306,
+        332
+      ],
+      "medio_lateral": [
+        302,
+        332
+      ],
+      "inferior_lateral": [
+        300,
+        324
+      ],
+      "inferior_medio": [
+        301,
+        315
+      ],
+      "inferior": [
+        303,
+        307
+      ]
+    },
+    "OE": {
+      "superior": [
+        317,
+        312
+      ],
+      "superior_lateral": [
+        324,
+        307
+      ],
+      "medio_lateral": [
+        331,
+        299
+      ],
+      "inferior_lateral": [
+        327,
+        296
+      ],
+      "inferior_medio": [
+        319,
+        304
+      ],
+      "inferior": [
+        312,
+        308
+      ]
+    }
+  },
+  "rnfl": null,
+  "edema_descolamento": null,
+  "percentuais": null,
+  "descricao_cortes": "Tracing HD, Fine Retinal Intensity +5, cortes radiais múltiplos por olho (6 cortes exibidos em miniatura por lado), com linha de referência central para medida pontual (218 µm OD / 239 µm OE)",
+  "estrategia_exame": "MACULA RADIAL 6, varredura de 6,0mm com 1024 A-scans, SLO Wide, Focus[D]: OD +0,00 / OE +5,50, Axial[mm]: Gullstrand",
+  "observacoes_tecnicas": "S/N 670065, Versão 22002/2.22.00; OD capturado às 11:15:56, OE capturado às 11:17:18; Tracing HD 10/10 (OD) e 1/10 (OE)"
+}

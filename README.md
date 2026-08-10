@@ -1,20 +1,36 @@
 # Automação de Laudos de OCT — Ocular Oftalmologia
 
 Sistema para extrair automaticamente os dados de um exame de OCT
-(Tomografia de Coerência Óptica, protocolo Zeiss Cirrus) usando a API
-da Claude (Anthropic) e gerar o laudo já preenchido em Word (.docx),
-junto com um arquivo JSON de auditoria/backup dos dados extraídos.
+(Tomografia de Coerência Óptica) usando a API da Claude (Anthropic) e
+gerar o laudo já preenchido em Word (.docx), junto com um arquivo JSON
+de auditoria/backup dos dados extraídos.
 
-**Um exame completo normalmente é composto por vários PDFs** — o
-Zeiss Cirrus exporta um arquivo separado para cada protocolo de
-varredura (ex: Macular Cube - Macular Thickness, Macular Cube -
-Ganglion Cell, Optic Disc Cube - ONH and RNFL, HD 5 Line Raster OD e
-OS). O programa permite selecionar todos esses PDFs de uma vez e
-combina os dados de todos eles em um único laudo, com os parâmetros de
-OD e OE lado a lado.
+**Equipamentos suportados atualmente:**
+
+| Equipamento | Chave interna | Status |
+|---|---|---|
+| Zeiss Cirrus HD-OCT | `zeiss` | ✅ Disponível |
+| Nidek RS-3000 Advance (RetinaScan Advance) | `nidek` | ✅ Disponível |
+| Topcon Triton (DRI OCT Triton / Triton Plus) | `topcon` | 🕓 Planejado — aguardando PDFs de exemplo para configurar |
+
+Ao abrir o programa (de mesa ou web), você escolhe o equipamento usado
+naquele exame em um seletor — o restante do fluxo é idêntico. Cada
+equipamento tem seu próprio arquivo de configuração (`config_*.json`)
+e seu próprio modelo de laudo (`template_laudo_*.docx`); veja a seção
+9 para saber como adicionar um novo.
+
+**Um exame completo normalmente é composto por vários PDFs** — cada
+equipamento exporta um arquivo separado para cada protocolo de
+varredura (no Zeiss Cirrus: Macular Cube - Macular Thickness, Macular
+Cube - Ganglion Cell, Optic Disc Cube - ONH and RNFL, HD 5 Line Raster
+OD e OS; no Nidek RS-3000: Macula Map OD/OE, Disc Map, Macula Radial,
+Macula Line, Angio OCT OD/OE). O programa permite selecionar todos
+esses PDFs de uma vez e combina os dados de todos eles em um único
+laudo, com os parâmetros de OD e OE lado a lado.
 
 Não é necessário usar terminal no dia a dia: o programa abre em uma
-janela simples, com botões para selecionar os PDFs e gerar o laudo.
+janela simples, com um seletor de equipamento e botões para selecionar
+os PDFs e gerar o laudo.
 
 > **Quer usar de qualquer lugar (celular, tablet, outro computador),
 > sem precisar instalar Python?** Este mesmo sistema também existe
@@ -27,14 +43,17 @@ janela simples, com botões para selecionar os PDFs e gerar o laudo.
 
 ```
 nucleo_laudo.py       -> TODA a lógica (extração, validação, geração) — sem interface
+                          inclui o registro EQUIPAMENTOS_SUPORTADOS (ver seção 9)
 main.py                 -> aplicativo de mesa (janela Tkinter), usa nucleo_laudo.py
 app_web.py                -> aplicativo web (FastAPI), usa nucleo_laudo.py — ver README_WEB.md
 web/index.html               -> página do aplicativo web (upload + download do laudo)
-config_oct.json                 -> configuração dos campos do exame de OCT
-template_laudo.docx               -> modelo do laudo em Word, com marcadores {{campo}}
-requirements.txt                    -> dependências do aplicativo de mesa
-requirements_web.txt                  -> dependências do aplicativo web (inclui as de cima + FastAPI)
-exemplo/                                -> dados fictícios e script de teste sem precisar de PDF/API
+config_oct.json                 -> configuração dos campos — Zeiss Cirrus HD-OCT
+template_laudo.docx               -> modelo do laudo em Word — Zeiss Cirrus HD-OCT
+config_nidek.json                   -> configuração dos campos — Nidek RS-3000 Advance
+template_laudo_nidek.docx             -> modelo do laudo em Word — Nidek RS-3000 Advance
+requirements.txt                        -> dependências do aplicativo de mesa
+requirements_web.txt                      -> dependências do aplicativo web (inclui as de cima + FastAPI)
+exemplo/                                    -> dados fictícios e scripts de teste sem precisar de PDF/API
 ```
 
 `main.py` e `app_web.py` são só duas "portas de entrada" diferentes
@@ -85,19 +104,21 @@ proporcional ao número de PDFs e páginas enviados.
 ## 4. Como usar
 
 1. Rode o programa (duplo clique ou, em terminal: `python main.py`).
-2. Clique em **"1. Selecionar PDFs do Exame"** e marque **todos** os
+2. No seletor **"Equipamento"**, escolha o equipamento usado naquele
+   exame (ex: "Zeiss Cirrus HD-OCT" ou "Nidek RS-3000 Advance").
+3. Clique em **"1. Selecionar PDFs do Exame"** e marque **todos** os
    PDFs daquele exame (você pode selecionar vários arquivos de uma vez
    na mesma janela — segure Ctrl e clique em cada um, ou Shift para
    selecionar um intervalo).
-3. Clique em **"2. Gerar Laudo"**.
-4. Aguarde a barra de progresso (a extração pode levar alguns
+4. Clique em **"2. Gerar Laudo"**.
+5. Aguarde a barra de progresso (a extração pode levar alguns
    segundos a mais de um minuto, dependendo da quantidade de PDFs).
-5. Ao final, o programa mostra onde os arquivos foram salvos, dentro de
+6. Ao final, o programa mostra onde os arquivos foram salvos, dentro de
    `Documentos\LaudosOCT\laudos_gerados`:
    - `<paciente>_<data>_laudo.docx` — o laudo pronto em Word.
    - `<paciente>_<data>_dados.json` — os dados extraídos, em formato
      JSON, para conferência e auditoria.
-6. **Sempre revise o laudo gerado antes de assinar/entregar** — o
+7. **Sempre revise o laudo gerado antes de assinar/entregar** — o
    sistema apenas transcreve os dados visíveis no exame; a
    responsabilidade pela interpretação clínica, pela conclusão
    diagnóstica e pela conferência dos dados é do médico. Campos que a
@@ -107,16 +128,18 @@ proporcional ao número de PDFs e páginas enviados.
 ## 5. Testando sem PDFs reais (dados fictícios)
 
 Para validar a instalação sem precisar de um exame real nem de chave
-de API, use o script de teste com dados fictícios:
+de API, use os scripts de teste com dados fictícios — um para cada
+equipamento:
 
 ```
-python exemplo/teste_geracao_laudo.py
+python exemplo/teste_geracao_laudo.py          (Zeiss Cirrus HD-OCT)
+python exemplo/teste_geracao_laudo_nidek.py     (Nidek RS-3000 Advance)
 ```
 
-Esse script pega os dados de `exemplo/dados_exemplo_oct.json`,
-calcula os campos automáticos (idade, protocolo), valida e gera
-`exemplo/laudo_exemplo.docx` e `exemplo/laudo_exemplo_dados.json` —
-útil para testar o template Word sem chamar a API.
+Cada script pega os dados de `exemplo/dados_exemplo_oct.json` (ou
+`dados_exemplo_nidek.json`), calcula os campos automáticos (idade,
+protocolo), valida e gera o laudo `.docx` + `.json` correspondente na
+pasta `exemplo/` — útil para testar o template Word sem chamar a API.
 
 ## 6. Como funciona (visão geral)
 
@@ -152,6 +175,12 @@ IA: são calculados pelo próprio programa (mais confiável e sem custo
 de API), na função `completar_campos_automaticos` em `main.py`.
 
 ## 7. Estrutura dos dados do laudo (seções clínicas)
+
+Esta seção descreve `config_oct.json` (Zeiss Cirrus). O Nidek RS-3000
+Advance segue a mesma lógica em `config_nidek.json`, com uma seção a
+mais (Angiografia OCT/AngioScan) e nomenclatura de campos própria do
+equipamento (ex: SQI/SSI em vez de Signal Strength) — abra o arquivo
+para ver a lista completa de campos.
 
 Os campos em `config_oct.json` seguem a estrutura de um laudo real de
 OCT (Zeiss Cirrus), organizada em 3 seções, com valores separados por
@@ -201,27 +230,63 @@ automaticamente listados em `"campos_calculados_automaticamente"`
 (`idade`, `protocolo`, `nome_medico`, `crm_medico`,
 `data_geracao_laudo`).
 
-## 9. Adicionando novos tipos de exame (Campo Visual, Topografia, Biometria...)
+## 9. Adicionando novos equipamentos ou tipos de exame
 
-O sistema foi desenhado para ser reaproveitado em outros exames, sem
-alterar `nucleo_laudo.py`:
+O sistema foi desenhado para ser reaproveitado em outros equipamentos
+de OCT (ex: Topcon Triton) ou outros tipos de exame (Campo Visual,
+Topografia, Biometria...), sem alterar a lógica em `nucleo_laudo.py`.
+Tudo passa por um único registro central, `EQUIPAMENTOS_SUPORTADOS`,
+no topo de `nucleo_laudo.py`:
 
-1. Copie `config_oct.json` para, por exemplo, `config_campo_visual.json`
-   e ajuste a lista `"campos"` com os dados que você quer extrair
-   daquele exame (rótulo, tipo, se é obrigatório, unidade, etc.).
-2. Copie `template_laudo.docx` para `template_campo_visual.docx` e
-   ajuste o layout e os marcadores `{{...}}` para os novos campos.
-3. No `main.py` (aplicativo de mesa), na classe `InterfaceGrafica`,
-   troque (ou adicione uma segunda opção para escolher) os caminhos de
-   `self.caminho_config` e `self.caminho_template`. No `app_web.py`
-   (aplicativo web), o mesmo vale para as constantes `CAMINHO_CONFIG`
-   e `CAMINHO_TEMPLATE` no topo do arquivo.
+```python
+EQUIPAMENTOS_SUPORTADOS = {
+    "zeiss": {
+        "nome_exibicao": "Zeiss Cirrus HD-OCT",
+        "config": "config_oct.json",
+        "template": "template_laudo.docx",
+    },
+    "nidek": {
+        "nome_exibicao": "Nidek RS-3000 Advance",
+        "config": "config_nidek.json",
+        "template": "template_laudo_nidek.docx",
+    },
+}
+```
+
+Para adicionar um equipamento novo (ex: Topcon Triton):
+
+1. Copie um `config_*.json` existente (ex: `config_nidek.json`) para
+   `config_topcon.json` e ajuste a lista `"campos"` com os dados que
+   você quer extrair daquele equipamento (rótulo, tipo, se é
+   obrigatório, unidade, etc.), além de `"protocolos_por_palavra_chave"`
+   (como reconhecer o protocolo pelo nome dos arquivos PDF exportados).
+2. Copie um `template_laudo_*.docx` existente para
+   `template_laudo_topcon.docx` e ajuste o layout e os marcadores
+   `{{...}}` para os novos campos.
+3. Adicione uma linha nova em `EQUIPAMENTOS_SUPORTADOS` (em
+   `nucleo_laudo.py`), com uma chave curta (ex: `"topcon"`) apontando
+   para os dois arquivos acima.
+
+Pronto — o seletor de equipamento passa a mostrar essa opção
+automaticamente, tanto no aplicativo de mesa (`main.py`) quanto no
+aplicativo web (`app_web.py` + `web/index.html`), sem mais nenhuma
+alteração de código. É recomendável também criar um
+`exemplo/dados_exemplo_<equipamento>.json` e um
+`exemplo/teste_geracao_laudo_<equipamento>.py` (copiando os do Nidek
+como modelo) para validar o template sem precisar de PDFs reais.
 
 Todas as classes de `nucleo_laudo.py` (`ExamConfig`, `PDFExtractor`,
 `ValidadorDados`, `WordGenerator`, `GeradorLaudoOCT`) já recebem o
 caminho de configuração/template como parâmetro — nenhuma delas é
-específica de OCT, e todas já suportam receber vários PDFs de um mesmo
-exame. Isso vale tanto para o aplicativo de mesa quanto para o web.
+específica de um equipamento, e todas já suportam receber vários PDFs
+de um mesmo exame. Isso vale tanto para o aplicativo de mesa quanto
+para o web.
+
+> **Topcon Triton (DRI OCT Triton / Triton Plus):** planejado, mas
+> ainda não configurado — falta receber PDFs de exemplo desse
+> equipamento para mapear os campos corretamente (o Triton, por ser
+> swept-source e ter retinógrafo integrado, deve trazer campos
+> adicionais como imagem de fundo de olho e OCT de coroide/EDI).
 
 ## 10. Mensagens de erro mais comuns
 

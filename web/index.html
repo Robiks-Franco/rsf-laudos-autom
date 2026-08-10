@@ -61,13 +61,17 @@
     color: var(--azul);
   }
   input[type="password"],
-  input[type="text"] {
+  input[type="text"],
+  select {
     width: 100%;
     padding: 12px 14px;
     font-size: 16px; /* evita zoom automático no iOS */
     border: 1px solid #CCD3DD;
     border-radius: var(--raio);
     margin-bottom: 14px;
+    background: #FFFFFF;
+    color: var(--cinza-texto);
+    font-family: inherit;
   }
   .linha-checkbox {
     display: flex;
@@ -218,10 +222,13 @@
 
     <h2 class="subtitulo">Gerar laudo de OCT</h2>
     <p style="font-size:0.85rem; color:var(--cinza-claro); margin-top:-8px;">
-      Selecione TODOS os PDFs do exame (o Zeiss Cirrus normalmente exporta
-      vários arquivos: Macular Thickness, Ganglion Cell, ONH and RNFL, HD
-      Raster OD/OS...). O sistema combina todos em um único laudo.
+      Selecione o equipamento e TODOS os PDFs do exame (o exame normalmente
+      exporta vários arquivos, um por protocolo de varredura).
+      O sistema combina todos em um único laudo.
     </p>
+
+    <label for="campo-equipamento">Equipamento de OCT</label>
+    <select id="campo-equipamento"></select>
 
     <div class="area-upload">
       <input type="file" id="input-arquivos" accept="application/pdf" multiple>
@@ -269,6 +276,31 @@
   var mensagemSucesso = document.getElementById("mensagem-sucesso");
   var mensagemErro = document.getElementById("mensagem-erro");
   var linkSair = document.getElementById("link-sair");
+  var campoEquipamento = document.getElementById("campo-equipamento");
+
+  // Busca a lista de equipamentos suportados no servidor e monta o
+  // seletor. Se um equipamento novo for adicionado no servidor
+  // (nucleo_laudo.py), ele passa a aparecer aqui automaticamente.
+  function carregarEquipamentos() {
+    fetch("/api/equipamentos")
+      .then(function (resposta) { return resposta.json(); })
+      .then(function (dados) {
+        campoEquipamento.innerHTML = "";
+        (dados.equipamentos || []).forEach(function (equipamento) {
+          var opcao = document.createElement("option");
+          opcao.value = equipamento.chave;
+          opcao.textContent = equipamento.nome_exibicao;
+          campoEquipamento.appendChild(opcao);
+        });
+        if (dados.padrao) campoEquipamento.value = dados.padrao;
+      })
+      .catch(function () {
+        // Se a lista não puder ser carregada, mantém um item padrão
+        // para o formulário continuar funcional.
+        campoEquipamento.innerHTML = "<option value=\"zeiss\">Zeiss Cirrus HD-OCT</option>";
+      });
+  }
+  carregarEquipamentos();
 
   function mostrarTelaPrincipal() {
     telaLogin.style.display = "none";
@@ -355,6 +387,7 @@
 
     var dadosFormulario = new FormData();
     dadosFormulario.append("senha", senhaAtual);
+    dadosFormulario.append("equipamento", campoEquipamento.value);
     arquivosSelecionados.forEach(function (arquivo) {
       dadosFormulario.append("arquivos", arquivo, arquivo.name);
     });

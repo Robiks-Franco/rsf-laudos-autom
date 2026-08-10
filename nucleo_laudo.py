@@ -99,6 +99,34 @@ class ErroGeracaoDocumento(ErroLaudoOCT):
 
 
 # ===================================================================
+# REGISTRO DE EQUIPAMENTOS SUPORTADOS
+# Cada entrada aponta para o arquivo de configuração e o template Word
+# daquele equipamento/exame. É usado pelos dois "front-ends" (main.py
+# e app_web.py) para montar o seletor de equipamento — assim os dois
+# aplicativos sempre mostram exatamente as mesmas opções.
+#
+# PRONTO PARA ADICIONAR UM NOVO EQUIPAMENTO (ex: Topcon Triton):
+#   1. Crie "config_<equipamento>.json" e "template_laudo_<equipamento>.docx"
+#      seguindo o padrão dos exemplos já existentes.
+#   2. Adicione uma linha abaixo, com uma chave curta (ex: "topcon").
+#   Pronto — o aplicativo de mesa e o aplicativo web já passam a
+#   oferecer essa opção automaticamente, sem mais nenhuma alteração.
+# ===================================================================
+EQUIPAMENTOS_SUPORTADOS = {
+    "zeiss": {
+        "nome_exibicao": "Zeiss Cirrus HD-OCT",
+        "config": "config_oct.json",
+        "template": "template_laudo.docx",
+    },
+    "nidek": {
+        "nome_exibicao": "Nidek RS-3000 Advance",
+        "config": "config_nidek.json",
+        "template": "template_laudo_nidek.docx",
+    },
+}
+
+
+# ===================================================================
 # FUNÇÕES UTILITÁRIAS (datas, idade, protocolo)
 # Ficam fora das classes por serem funções puras/independentes,
 # reaproveitáveis por qualquer parte do sistema (e fáceis de testar).
@@ -159,10 +187,13 @@ def calcular_idade(data_nascimento_texto: str, data_referencia_texto: str) -> st
     return f"{anos} anos"
 
 
-# Palavras-chave usadas para identificar, pelo nome do arquivo PDF
-# exportado pelo Zeiss Cirrus, quais protocolos de varredura foram
-# incluídos no exame. Fácil de estender para outros equipamentos/exames.
-_PROTOCOLOS_POR_PALAVRA_CHAVE = [
+# Lista padrão de palavras-chave, usada apenas como último recurso se
+# um arquivo config_*.json não definir a própria lista em
+# "protocolos_por_palavra_chave" (ver ExamConfig.protocolos_por_palavra_chave
+# mais abaixo). Cada equipamento nomeia os arquivos de um jeito — por
+# isso o ideal é sempre definir essa lista dentro do config de cada
+# equipamento, não aqui no núcleo.
+_PROTOCOLOS_PADRAO_FALLBACK = [
     ("Macular Thickness", "Espessura Macular (Retina)"),
     ("Ganglion Cell", "Complexo de Células Ganglionares (GCC)"),
     ("ONH and RNFL", "Nervo Óptico e RNFL (Glaucoma)"),
@@ -170,16 +201,20 @@ _PROTOCOLOS_POR_PALAVRA_CHAVE = [
 ]
 
 
-def detectar_protocolo(nomes_arquivos: list) -> str:
+def detectar_protocolo(nomes_arquivos: list, mapa_protocolos: list = None) -> str:
     """
     Monta uma descrição textual de quais protocolos de varredura foram
     incluídos no exame, a partir dos nomes dos arquivos PDF selecionados
-    (o Zeiss Cirrus nomeia os arquivos de forma padronizada, incluindo o
-    nome do protocolo). Se nada for reconhecido, retorna None.
+    (cada equipamento nomeia os arquivos de forma padronizada, incluindo
+    o nome do protocolo). 'mapa_protocolos' é a lista de (palavra_chave,
+    descrição) vinda do config_*.json do equipamento em uso — se não for
+    informada, usa uma lista padrão de fallback. Se nada for reconhecido,
+    retorna None.
     """
+    mapa = mapa_protocolos or _PROTOCOLOS_PADRAO_FALLBACK
     protocolos_encontrados = []
     for nome in nomes_arquivos:
-        for palavra_chave, descricao in _PROTOCOLOS_POR_PALAVRA_CHAVE:
+        for palavra_chave, descricao in mapa:
             if palavra_chave.lower() in nome.lower() and descricao not in protocolos_encontrados:
                 protocolos_encontrados.append(descricao)
     if not protocolos_encontrados:
@@ -224,7 +259,7 @@ def completar_campos_automaticos(dados: dict, nomes_arquivos: list, config: "Exa
     if idade_calculada:
         dados["idade"] = idade_calculada
 
-    protocolo = detectar_protocolo(nomes_arquivos)
+    protocolo = detectar_protocolo(nomes_arquivos, config.protocolos_por_palavra_chave)
     if protocolo:
         dados["protocolo"] = protocolo
 
@@ -297,6 +332,17 @@ class ExamConfig:
     @property
     def medico_responsavel(self) -> dict:
         return self.dados_config.get("medico_responsavel", {"nome": "", "crm": ""})
+
+    @property
+    def protocolos_por_palavra_chave(self) -> list:
+        """
+        Lista de (palavra_chave, descrição) usada para reconhecer, pelo
+        nome dos arquivos PDF, quais protocolos de varredura foram
+        incluídos no exame — específica de cada equipamento/config.
+        Formato no JSON: [["palavra", "descrição"], ...].
+        """
+        pares = self.dados_config.get("protocolos_por_palavra_chave", [])
+        return [tuple(par) for par in pares]
 
     # ---------------- Métodos utilitários ----------------
     def obter_campo(self, campo_id: str) -> dict:

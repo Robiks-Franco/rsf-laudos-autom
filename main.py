@@ -36,6 +36,7 @@ from pathlib import Path
 from nucleo_laudo import (
     ErroLaudoOCT,
     GeradorLaudoOCT,
+    EQUIPAMENTOS_SUPORTADOS,
 )
 
 try:
@@ -63,9 +64,13 @@ class InterfaceGrafica:
         self.raiz.geometry("640x520")
         self.raiz.minsize(580, 440)
 
-        pasta_programa = Path(__file__).resolve().parent
-        self.caminho_config = pasta_programa / "config_oct.json"
-        self.caminho_template = pasta_programa / "template_laudo.docx"
+        self.pasta_programa = Path(__file__).resolve().parent
+
+        # Lista de equipamentos disponíveis (vem de nucleo_laudo.py —
+        # adicionar um novo equipamento lá já faz ele aparecer aqui
+        # automaticamente, sem alterar mais nada nesta classe).
+        self.chaves_equipamentos = list(EQUIPAMENTOS_SUPORTADOS.keys())
+        self.chave_equipamento_atual = self.chaves_equipamentos[0]
 
         # Os laudos gerados ficam salvos em uma pasta fixa dentro de
         # "Documentos", independente de onde o programa esteja
@@ -76,6 +81,24 @@ class InterfaceGrafica:
         self.gerador = None  # criado sob demanda, após informar a chave de API
 
         self._montar_layout()
+        self._aplicar_equipamento_selecionado()
+
+    # ---------------- Equipamento selecionado ----------------
+    def _info_equipamento(self, chave: str) -> dict:
+        return EQUIPAMENTOS_SUPORTADOS[chave]
+
+    def _aplicar_equipamento_selecionado(self):
+        """Atualiza os caminhos de config/template para o equipamento escolhido."""
+        info = self._info_equipamento(self.chave_equipamento_atual)
+        self.caminho_config = self.pasta_programa / info["config"]
+        self.caminho_template = self.pasta_programa / info["template"]
+        self.gerador = None  # o gerador antigo era de outro equipamento — descarta
+
+    def _ao_trocar_equipamento(self, evento=None):
+        indice = self.combo_equipamento.current()
+        self.chave_equipamento_atual = self.chaves_equipamentos[indice]
+        self._aplicar_equipamento_selecionado()
+        self._log(f"Equipamento selecionado: {self._info_equipamento(self.chave_equipamento_atual)['nome_exibicao']}")
 
     # ---------------- Construção da interface ----------------
     def _montar_layout(self):
@@ -98,6 +121,26 @@ class InterfaceGrafica:
             fg="#444444",
             justify="left",
         ).pack(anchor="w", pady=(2, 0))
+
+        quadro_equipamento = tk.Frame(self.raiz, padx=16, pady=8)
+        quadro_equipamento.pack(fill="x")
+
+        tk.Label(
+            quadro_equipamento, text="Equipamento:", font=fonte_normal
+        ).pack(side="left")
+
+        nomes_equipamentos = [
+            EQUIPAMENTOS_SUPORTADOS[chave]["nome_exibicao"] for chave in self.chaves_equipamentos
+        ]
+        self.combo_equipamento = ttk.Combobox(
+            quadro_equipamento,
+            values=nomes_equipamentos,
+            state="readonly",
+            width=30,
+        )
+        self.combo_equipamento.current(0)
+        self.combo_equipamento.bind("<<ComboboxSelected>>", self._ao_trocar_equipamento)
+        self.combo_equipamento.pack(side="left", padx=8)
 
         quadro_arquivo = tk.Frame(self.raiz, padx=16, pady=8)
         quadro_arquivo.pack(fill="x")

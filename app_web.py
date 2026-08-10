@@ -44,29 +44,36 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
 
-from nucleo_laudo import ErroLaudoOCT, GeradorLaudoOCT
+from nucleo_laudo import ErroLaudoOCT, GeradorLaudoOCT, EQUIPAMENTOS_SUPORTADOS
 
 # -----------------------------------------------------------------
 # Caminhos e configuração
 # -----------------------------------------------------------------
 PASTA_PRINCIPAL = Path(__file__).resolve().parent
-CAMINHO_CONFIG = PASTA_PRINCIPAL / "config_oct.json"
-CAMINHO_TEMPLATE = PASTA_PRINCIPAL / "template_laudo.docx"
 CAMINHO_INDEX_HTML = PASTA_PRINCIPAL / "web" / "index.html"
+
+EQUIPAMENTO_PADRAO = next(iter(EQUIPAMENTOS_SUPORTADOS))  # "zeiss" (primeiro do registro)
 
 app = FastAPI(title="Automação de Laudos OCT — Ocular Oftalmologia")
 
-# Instância única do gerador, reaproveitada entre requisições (evita
-# reabrir o config/template a cada laudo). É criada sob demanda, na
-# primeira requisição, para dar uma mensagem clara se a chave de API
-# não estiver configurada — em vez de o servidor inteiro falhar ao ligar.
-_gerador: GeradorLaudoOCT = None
+# Um gerador por equipamento, reaproveitado entre requisições (evita
+# reabrir o config/template a cada laudo). Cada um é criado sob
+# demanda, na primeira vez que aquele equipamento é usado, para dar
+# uma mensagem clara se a chave de API não estiver configurada — em
+# vez de o servidor inteiro falhar ao ligar.
+_geradores: dict = {}
 
 
-def obter_gerador() -> GeradorLaudoOCT:
-    """Cria (uma única vez) e devolve a instância do gerador de laudos."""
-    global _gerador
-    if _gerador is None:
+def obter_gerador(chave_equipamento: str) -> GeradorLaudoOCT:
+    """Cria (uma única vez, por equipamento) e devolve o gerador de laudos correspondente."""
+    info = EQUIPAMENTOS_SUPORTADOS.get(chave_equipamento)
+    if info is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Equipamento desconhecido: '{chave_equipamento}'.",
+        )
+
+    if chave_equipamento not in _geradores:
         chave_api = os.environ.get("ANTHROPIC_API_KEY")
         if not chave_api:
             raise HTTPException(
@@ -77,10 +84,12 @@ def obter_gerador() -> GeradorLaudoOCT:
                     "de hospedagem (veja README_WEB.md)."
                 ),
             )
-        _gerador = GeradorLaudoOCT(
-            str(CAMINHO_CONFIG), str(CAMINHO_TEMPLATE), chave_api=chave_api
+        caminho_config = PASTA_PRINCIPAL / info["config"]
+        caminho_template = PASTA_PRINCIPAL / info["template"]
+        _geradores[chave_equipamento] = GeradorLaudoOCT(
+            str(caminho_config), str(caminho_template), chave_api=chave_api
         )
-    return _gerador
+    return _geradores[chave_equipamento]
 
 
 def verificar_senha(senha: str):
@@ -121,13 +130,33 @@ def status():
     return {"status": "ok"}
 
 
-@app.post("/api/gerar-laudo")
-async def gerar_laudo(senha: str = Form(...), arquivos: List[UploadFile] = File(...)):
+@app.get("/api/equipamentos")
+def listar_equipamentos():
     """
-    Recebe a senha de acesso + um ou mais PDFs do mesmo exame, gera o
-    laudo em Word e devolve o arquivo .docx pronto para download —
-    exatamente o mesmo fluxo de GeradorLaudoOCT.processar_exame usado
-    no aplicativo de mesa (main.py).
+    Lista os equipamentos de OCT suportados, para o front-end montar o
+    seletor. Adicionar um equipamento novo em nucleo_laudo.py já faz
+    ele aparecer aqui automaticamente, sem alterar mais nada.
+    """
+    return {
+        "equipamentos": [
+            {"chave": chave, "nome_exibicao": info["nome_exibicao"]}
+            for chave, info in EQUIPAMENTOS_SUPORTADOS.items()
+        ],
+        "padrao": EQUIPAMENTO_PADRAO,
+    }
+
+
+@app.post("/api/gerar-laudo")
+async def gerar_laudo(
+    senha: str = Form(...),
+    arquivos: List[UploadFile] = File(...),
+    equipamento: str = Form(EQUIPAMENTO_PADRAO),
+):
+    """
+    Recebe a senha de acesso + o equipamento usado + um ou mais PDFs do
+    mesmo exame, gera o laudo em Word e devolve o arquivo .docx pronto
+    para download — exatamente o mesmo fluxo de
+    GeradorLaudoOCT.processar_exame usado no aplicativo de mesa (main.py).
     """
     verificar_senha(senha)
 
@@ -142,10 +171,11 @@ async def gerar_laudo(senha: str = Form(...), arquivos: List[UploadFile] = File(
     pasta_temporaria = Path(tempfile.mkdtemp(prefix="laudo_oct_"))
     try:
         # A criação do cliente da API (obter_gerador) também fica dentro
-        # do try: se a chave de API estiver ausente/inválida ou houver
-        # qualquer outro problema de configuração, o erro vira uma
-        # resposta JSON amigável em vez de derrubar a requisição.
-        gerador = obter_gerador()
+        # do try: se a chave de API estiver ausente/inválida, o
+        # equipamento for desconhecido, ou houver qualquer outro
+        # problema de configuração, o erro vira uma resposta JSON
+        # amigável em vez de derrubar a requisição.
+        gerador = obter_gerador(equipamento)
 
         caminhos_pdfs = []
         for arquivo in arquivos:

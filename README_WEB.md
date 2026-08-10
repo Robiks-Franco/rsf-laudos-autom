@@ -42,6 +42,8 @@ Tempo estimado: 20 a 30 minutos, feito uma única vez.
    - `main.py`
    - `config_oct.json`
    - `template_laudo.docx`
+   - `config_nidek.json`
+   - `template_laudo_nidek.docx`
    - `requirements.txt`
    - `requirements_web.txt`
    - `render.yaml`
@@ -49,6 +51,12 @@ Tempo estimado: 20 a 30 minutos, feito uma única vez.
    - `.gitignore`
    - a pasta `web` (com o arquivo `index.html` dentro)
    - a pasta `exemplo` (opcional, não é necessária para o site funcionar)
+
+   O site já vem com um seletor de equipamento (Zeiss Cirrus, Nidek
+   RS-3000 Advance, e outros que forem adicionados no futuro, como o
+   Topcon Triton) — não precisa configurar nada a mais para isso
+   funcionar, basta enviar os arquivos de configuração/template de
+   cada equipamento junto com os demais.
 6. Role até o final da página e clique em **Commit changes** (pode manter as opções padrão).
 
 Pronto — o código está no GitHub. **Nunca envie sua chave de API nem
@@ -97,8 +105,9 @@ poucos cliques usando o recurso **Blueprint**:
 
 1. Abra a URL do Render no navegador do computador e do celular.
 2. Digite a `SENHA_ACESSO` que você escolheu.
-3. Selecione alguns PDFs de teste e clique em **Gerar Laudo** — o
-   download do `.docx` deve começar automaticamente.
+3. Escolha o equipamento correto no seletor, selecione os PDFs de
+   teste e clique em **Gerar Laudo** — o download do `.docx` deve
+   começar automaticamente.
 4. **No celular (deixar com "cara de aplicativo"):**
    - **iPhone (Safari):** toque no ícone de compartilhar (quadrado com
      seta) → **Adicionar à Tela de Início**.
