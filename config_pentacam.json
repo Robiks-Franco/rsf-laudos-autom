@@ -1,0 +1,102 @@
+{
+  "tipo_exame": "TOMOGRAFIA_CORNEA_PENTACAM",
+  "nome_exibicao": "Tomografia de Córnea — Pentacam® (Oculus)",
+  "versao_config": "1.0",
+  "descricao": "Configuração de campos, validações e prompt de extração para laudos de Tomografia de Córnea feitos no equipamento Pentacam (Oculus), câmera de Scheimpflug. Um exame completo é composto por DOIS PDFs — um para o olho direito (OD) e outro para o olho esquerdo (OE) — cada um com várias páginas (identificação, 4 Mapas Refrativos, Aberrometria, Topométrico/Estadiamento KC, Av. Refrativa, Cataract Pre-OP, Ectasia Reforçada Belin/Ambrósio, Imagem de Íris, Anéis Corneanos). O sistema combina os dois PDFs em um único laudo, com os parâmetros de OD e OE lado a lado.",
+
+  "modelo_claude": "claude-sonnet-5",
+
+  "medico_responsavel": {
+    "nome": "Dr. Robson Silva Franco",
+    "crm": "CRM/MG 32.320"
+  },
+
+  "prompt_extracao_base": "Você é um assistente especializado em oftalmologia que auxilia um médico oftalmologista a transcrever dados de um exame de Tomografia de Córnea feito no equipamento Pentacam (Oculus), câmera de Scheimpflug. O exame completo é composto por DOIS arquivos PDF — um para o olho direito (OD, 'Direito') e outro para o olho esquerdo (OE, 'Esquerdo') — cada um com várias páginas impressas pelo próprio equipamento. Os arquivos foram convertidos em imagens (uma por página) e são apresentados a seguir, cada um identificado pelo nome do arquivo de origem. As páginas de cada PDF normalmente incluem, nesta ordem (mas confie no TÍTULO de cada página, não na posição, pois a ordem pode variar conforme a configuração de impressão do equipamento): 'Imagens Scheimpflug' (identificação do paciente), '4 Mapas Refrativos' (Córnea Ant./Post., K1/K2/Km/Astig./Eixo, Paquimetria, Volume, Ângulo, Ø Córnea, Diâm.Pupil.), 'Aberrometry Cornea', 'Topométrico / Estadiamento KC' (índices ISV, IVA, KI, CKI, IHA, IHD, RMin, TKC), 'Av. Refrativa', 'Cataract Pre-OP' (SimK, TCRP, BAD D, Prof.Câm.Ant. Ext./Int.), 'Ectasia Reforçada Belin/Ambrósio' (Elev.Ant./Elev.Post., Índice de Progressão Min/Méd/Máx, ARTmax, D), 'Imagem de Íris' e 'Anéis Corneanos'. Localize cada campo pedido abaixo na página correspondente (indicada entre parênteses em cada campo), lendo com atenção os números pequenos impressos em cada painel — especialmente valores que aparecem em mais de uma página (ex: BAD D aparece tanto em 'Cataract Pre-OP' quanto em 'Ectasia Reforçada Belin/Ambrósio', com o mesmo valor). Analise cuidadosamente todas as imagens fornecidas antes de responder. Não faça diagnóstico nem interpretação clínica: apenas transcreva fielmente os dados numéricos e textuais exibidos no exame. Se um campo pertence a um olho cujo PDF não foi fornecido, ou não estiver visível em nenhuma página fornecida, retorne null para ele — não invente.",
+
+  "campos": [
+    { "id": "nome_paciente", "rotulo": "Nome do Paciente (junte os campos 'Sobrenome' + 'Nome')", "categoria": "identificacao", "tipo": "texto", "obrigatorio": true },
+    { "id": "data_nascimento", "rotulo": "Data de Nascimento (campo 'Nasc.')", "categoria": "identificacao", "tipo": "data", "obrigatorio": true },
+    { "id": "prontuario", "rotulo": "ID do Paciente (campo 'ID')", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false },
+    { "id": "data_exame", "rotulo": "Data do Exame (campo 'Data de Exame')", "categoria": "identificacao", "tipo": "data", "obrigatorio": true },
+    { "id": "indicacao_clinica", "rotulo": "Indicação Clínica do Exame", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false, "origem": "Não consta no PDF do equipamento — normalmente é preenchida manualmente pelo médico; retorne null" },
+    { "id": "qualidade_exame", "rotulo": "Qualidade do Exame (QS: OK / Examinar)", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false, "valores_permitidos": ["OK", "Examinar"], "origem": "Ícone de status 'QI' no topo de cada relatório (símbolo de alerta amarelo = 'Examinar'; sem alerta = 'OK'). Se um dos dois olhos estiver com alerta, responda algo como 'Examinar (OD)' ou 'Examinar (OE)'; se ambos OK, responda 'OK'" },
+
+    { "id": "k1_od", "rotulo": "K1 – ceratometria plana (D / mm) - OD", "categoria": "ceratometria", "tipo": "texto", "obrigatorio": false, "origem": "página '4 Mapas Refrativos' (arquivo OD), painel 'Córnea Ant.': combine 'K1' (D) e 'Rp' (mm), formato '39.2 D / 8.61 mm'" },
+    { "id": "k1_os", "rotulo": "K1 – ceratometria plana (D / mm) - OE", "categoria": "ceratometria", "tipo": "texto", "obrigatorio": false, "origem": "página '4 Mapas Refrativos' (arquivo OE), painel 'Córnea Ant.': combine 'K1' (D) e 'Rp' (mm), formato '39.3 D / 8.60 mm'" },
+    { "id": "k2_od", "rotulo": "K2 – ceratometria curva (D / mm) - OD", "categoria": "ceratometria", "tipo": "texto", "obrigatorio": false, "origem": "página '4 Mapas Refrativos' (arquivo OD), painel 'Córnea Ant.': combine 'K2' (D) e 'Rc' (mm)" },
+    { "id": "k2_os", "rotulo": "K2 – ceratometria curva (D / mm) - OE", "categoria": "ceratometria", "tipo": "texto", "obrigatorio": false, "origem": "página '4 Mapas Refrativos' (arquivo OE), painel 'Córnea Ant.': combine 'K2' (D) e 'Rc' (mm)" },
+    { "id": "km_od", "rotulo": "Km – ceratometria média (D) - OD", "categoria": "ceratometria", "tipo": "numero", "obrigatorio": false, "unidade": "D", "origem": "página '4 Mapas Refrativos' (arquivo OD), painel 'Córnea Ant.', campo 'Km'" },
+    { "id": "km_os", "rotulo": "Km – ceratometria média (D) - OE", "categoria": "ceratometria", "tipo": "numero", "obrigatorio": false, "unidade": "D", "origem": "página '4 Mapas Refrativos' (arquivo OE), painel 'Córnea Ant.', campo 'Km'" },
+    { "id": "astigmatismo_od", "rotulo": "Astigmatismo corneano (D) - OD", "categoria": "ceratometria", "tipo": "numero", "obrigatorio": false, "unidade": "D", "origem": "página '4 Mapas Refrativos' (arquivo OD), painel 'Córnea Ant.', campo 'Astig.'" },
+    { "id": "astigmatismo_os", "rotulo": "Astigmatismo corneano (D) - OE", "categoria": "ceratometria", "tipo": "numero", "obrigatorio": false, "unidade": "D", "origem": "página '4 Mapas Refrativos' (arquivo OE), painel 'Córnea Ant.', campo 'Astig.'" },
+    { "id": "eixo_od", "rotulo": "Eixo do meridiano mais curvo (°) - OD", "categoria": "ceratometria", "tipo": "numero", "obrigatorio": false, "unidade": "°", "origem": "página '4 Mapas Refrativos' (arquivo OD), painel 'Córnea Ant.', campo 'Eixo (curvo)'" },
+    { "id": "eixo_os", "rotulo": "Eixo do meridiano mais curvo (°) - OE", "categoria": "ceratometria", "tipo": "numero", "obrigatorio": false, "unidade": "°", "origem": "página '4 Mapas Refrativos' (arquivo OE), painel 'Córnea Ant.', campo 'Eixo (curvo)'" },
+    { "id": "kmax_od", "rotulo": "Kmáx – ceratometria máxima (D) - OD", "categoria": "ceratometria", "tipo": "numero", "obrigatorio": false, "unidade": "D", "origem": "página '4 Mapas Refrativos' (arquivo OD), campo 'K Máx.(ant.)'" },
+    { "id": "kmax_os", "rotulo": "Kmáx – ceratometria máxima (D) - OE", "categoria": "ceratometria", "tipo": "numero", "obrigatorio": false, "unidade": "D", "origem": "página '4 Mapas Refrativos' (arquivo OE), campo 'K Máx.(ant.)'" },
+
+    { "id": "espessura_apice_od", "rotulo": "Espessura no ápice (µm) - OD", "categoria": "paquimetria", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "página '4 Mapas Refrativos' (arquivo OD), campo 'Pachy Vertex N.'" },
+    { "id": "espessura_apice_os", "rotulo": "Espessura no ápice (µm) - OE", "categoria": "paquimetria", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "página '4 Mapas Refrativos' (arquivo OE), campo 'Pachy Vertex N.'" },
+    { "id": "ponto_mais_fino_espessura_od", "rotulo": "Ponto mais fino – espessura (µm) - OD", "categoria": "paquimetria", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "página '4 Mapas Refrativos' (arquivo OD), campo 'Ponto + fino'" },
+    { "id": "ponto_mais_fino_espessura_os", "rotulo": "Ponto mais fino – espessura (µm) - OE", "categoria": "paquimetria", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "página '4 Mapas Refrativos' (arquivo OE), campo 'Ponto + fino'" },
+    { "id": "ponto_mais_fino_localizacao_od", "rotulo": "Ponto mais fino – localização (x, y) - OD", "categoria": "paquimetria", "tipo": "texto", "obrigatorio": false, "origem": "página '4 Mapas Refrativos' (arquivo OD), coordenadas x[mm]/y[mm] da linha 'Ponto + fino', formato '(-0.92, -0.56) mm'" },
+    { "id": "ponto_mais_fino_localizacao_os", "rotulo": "Ponto mais fino – localização (x, y) - OE", "categoria": "paquimetria", "tipo": "texto", "obrigatorio": false, "origem": "página '4 Mapas Refrativos' (arquivo OE), coordenadas x[mm]/y[mm] da linha 'Ponto + fino', formato '(0.77, -0.49) mm'" },
+    { "id": "ppi_od", "rotulo": "Índice de progressão paquimétrica – PPI (méd/máx) - OD", "categoria": "paquimetria", "tipo": "texto", "obrigatorio": false, "origem": "página 'Ectasia Reforçada Belin/Ambrósio' (arquivo OD), painel 'Índice de Progressão': combine 'Méd' e 'Máx', formato '0.74 (méd) / 0.96 (máx)'" },
+    { "id": "ppi_os", "rotulo": "Índice de progressão paquimétrica – PPI (méd/máx) - OE", "categoria": "paquimetria", "tipo": "texto", "obrigatorio": false, "origem": "página 'Ectasia Reforçada Belin/Ambrósio' (arquivo OE), painel 'Índice de Progressão': combine 'Méd' e 'Máx'" },
+
+    { "id": "elevacao_anterior_od", "rotulo": "Elevação anterior no ponto mais fino (µm) - OD", "categoria": "elevacao", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "página 'Ectasia Reforçada Belin/Ambrósio' (arquivo OD), campo 'Elev.Ant'" },
+    { "id": "elevacao_anterior_os", "rotulo": "Elevação anterior no ponto mais fino (µm) - OE", "categoria": "elevacao", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "página 'Ectasia Reforçada Belin/Ambrósio' (arquivo OE), campo 'Elev.Ant'" },
+    { "id": "elevacao_posterior_od", "rotulo": "Elevação posterior no ponto mais fino (µm) - OD", "categoria": "elevacao", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "página 'Ectasia Reforçada Belin/Ambrósio' (arquivo OD), campo 'Elev.Post'" },
+    { "id": "elevacao_posterior_os", "rotulo": "Elevação posterior no ponto mais fino (µm) - OE", "categoria": "elevacao", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "página 'Ectasia Reforçada Belin/Ambrósio' (arquivo OE), campo 'Elev.Post'" },
+    { "id": "bfs_od", "rotulo": "Diâmetro da BFS anterior / posterior (mm) - OD", "categoria": "elevacao", "tipo": "texto", "obrigatorio": false, "origem": "página '4 Mapas Refrativos' (arquivo OD), valores 'BFS=... Float' nos títulos dos mapas de Elevação (Anterior) e Elevação (Posterior), formato '8.49 mm (ant.) / 7.21 mm (post.)'" },
+    { "id": "bfs_os", "rotulo": "Diâmetro da BFS anterior / posterior (mm) - OE", "categoria": "elevacao", "tipo": "texto", "obrigatorio": false, "origem": "página '4 Mapas Refrativos' (arquivo OE), valores 'BFS=... Float' nos títulos dos mapas de Elevação (Anterior) e Elevação (Posterior)" },
+
+    { "id": "acd_od", "rotulo": "Profundidade da câmara anterior – ACD (mm, do endotélio) - OD", "categoria": "segmento_anterior", "tipo": "numero", "obrigatorio": false, "unidade": "mm", "origem": "página 'Cataract Pre-OP' (arquivo OD), campo 'Prof.Câm.Ant.(Int.)' — use o valor '(Int.)', NÃO o '(Ext.)'" },
+    { "id": "acd_os", "rotulo": "Profundidade da câmara anterior – ACD (mm, do endotélio) - OE", "categoria": "segmento_anterior", "tipo": "numero", "obrigatorio": false, "unidade": "mm", "origem": "página 'Cataract Pre-OP' (arquivo OE), campo 'Prof.Câm.Ant.(Int.)' — use o valor '(Int.)', NÃO o '(Ext.)'" },
+    { "id": "volume_camara_od", "rotulo": "Volume da câmara anterior (mm³) - OD", "categoria": "segmento_anterior", "tipo": "numero", "obrigatorio": false, "unidade": "mm³", "origem": "página '4 Mapas Refrativos' (arquivo OD), campo 'Volume Câmara'" },
+    { "id": "volume_camara_os", "rotulo": "Volume da câmara anterior (mm³) - OE", "categoria": "segmento_anterior", "tipo": "numero", "obrigatorio": false, "unidade": "mm³", "origem": "página '4 Mapas Refrativos' (arquivo OE), campo 'Volume Câmara'" },
+    { "id": "angulo_camara_od", "rotulo": "Ângulo da câmara anterior (°) - OD", "categoria": "segmento_anterior", "tipo": "numero", "obrigatorio": false, "unidade": "°", "origem": "página '4 Mapas Refrativos' (arquivo OD), campo 'Ângulo'" },
+    { "id": "angulo_camara_os", "rotulo": "Ângulo da câmara anterior (°) - OE", "categoria": "segmento_anterior", "tipo": "numero", "obrigatorio": false, "unidade": "°", "origem": "página '4 Mapas Refrativos' (arquivo OE), campo 'Ângulo'" },
+    { "id": "diametro_pupilar_od", "rotulo": "Diâmetro pupilar (mm) - OD", "categoria": "segmento_anterior", "tipo": "numero", "obrigatorio": false, "unidade": "mm", "origem": "página '4 Mapas Refrativos' (arquivo OD), campo 'Diâm.Pupil.'" },
+    { "id": "diametro_pupilar_os", "rotulo": "Diâmetro pupilar (mm) - OE", "categoria": "segmento_anterior", "tipo": "numero", "obrigatorio": false, "unidade": "mm", "origem": "página '4 Mapas Refrativos' (arquivo OE), campo 'Diâm.Pupil.'" },
+    { "id": "wtw_od", "rotulo": "Diâmetro branco-a-branco – WTW (mm) - OD", "categoria": "segmento_anterior", "tipo": "numero", "obrigatorio": false, "unidade": "mm", "origem": "página '4 Mapas Refrativos' (arquivo OD), campo 'Ø Córnea'" },
+    { "id": "wtw_os", "rotulo": "Diâmetro branco-a-branco – WTW (mm) - OE", "categoria": "segmento_anterior", "tipo": "numero", "obrigatorio": false, "unidade": "mm", "origem": "página '4 Mapas Refrativos' (arquivo OE), campo 'Ø Córnea'" },
+
+    { "id": "bad_d_od", "rotulo": "BAD-D – Belin/Ambrósio Display (desvio total, D) - OD", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Cataract Pre-OP' ou 'Ectasia Reforçada Belin/Ambrósio' (arquivo OD), campo 'BAD D' ou 'D'" },
+    { "id": "bad_d_os", "rotulo": "BAD-D – Belin/Ambrósio Display (desvio total, D) - OE", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Cataract Pre-OP' ou 'Ectasia Reforçada Belin/Ambrósio' (arquivo OE), campo 'BAD D' ou 'D'" },
+    { "id": "artmax_od", "rotulo": "ARTmáx – Ambrósio Relational Thickness máx - OD", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Ectasia Reforçada Belin/Ambrósio' (arquivo OD), campo 'ARTmax'" },
+    { "id": "artmax_os", "rotulo": "ARTmáx – Ambrósio Relational Thickness máx - OE", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Ectasia Reforçada Belin/Ambrósio' (arquivo OE), campo 'ARTmax'" },
+    { "id": "prfi_od", "rotulo": "PRFI – Pentacam Random Forest Index - OD", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "Índice não presente em todas as versões de software do Pentacam — procure em qualquer página do exame; se não aparecer em nenhuma, retorne null" },
+    { "id": "prfi_os", "rotulo": "PRFI – Pentacam Random Forest Index - OE", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "Índice não presente em todas as versões de software do Pentacam — procure em qualquer página do exame; se não aparecer em nenhuma, retorne null" },
+    { "id": "isv_od", "rotulo": "ISV – índice de variância da superfície - OD", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Topométrico / Estadiamento KC' (arquivo OD), painel 'Índices(zona de 8mm)', campo 'ISV'" },
+    { "id": "isv_os", "rotulo": "ISV – índice de variância da superfície - OE", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Topométrico / Estadiamento KC' (arquivo OE), painel 'Índices(zona de 8mm)', campo 'ISV'" },
+    { "id": "iva_od", "rotulo": "IVA – índice de assimetria vertical - OD", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Topométrico / Estadiamento KC' (arquivo OD), painel 'Índices(zona de 8mm)', campo 'IVA'" },
+    { "id": "iva_os", "rotulo": "IVA – índice de assimetria vertical - OE", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Topométrico / Estadiamento KC' (arquivo OE), painel 'Índices(zona de 8mm)', campo 'IVA'" },
+    { "id": "ki_od", "rotulo": "KI – índice de ceratocone - OD", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Topométrico / Estadiamento KC' (arquivo OD), painel 'Índices(zona de 8mm)', campo 'KI'" },
+    { "id": "ki_os", "rotulo": "KI – índice de ceratocone - OE", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Topométrico / Estadiamento KC' (arquivo OE), painel 'Índices(zona de 8mm)', campo 'KI'" },
+    { "id": "cki_od", "rotulo": "CKI – índice de ceratocone central - OD", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Topométrico / Estadiamento KC' (arquivo OD), painel 'Índices(zona de 8mm)', campo 'CKI'" },
+    { "id": "cki_os", "rotulo": "CKI – índice de ceratocone central - OE", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Topométrico / Estadiamento KC' (arquivo OE), painel 'Índices(zona de 8mm)', campo 'CKI'" },
+    { "id": "iha_od", "rotulo": "IHA – índice de assimetria de altura - OD", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Topométrico / Estadiamento KC' (arquivo OD), painel 'Índices(zona de 8mm)', campo 'IHA'" },
+    { "id": "iha_os", "rotulo": "IHA – índice de assimetria de altura - OE", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Topométrico / Estadiamento KC' (arquivo OE), painel 'Índices(zona de 8mm)', campo 'IHA'" },
+    { "id": "ihd_od", "rotulo": "IHD – índice de descentração de altura - OD", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Topométrico / Estadiamento KC' (arquivo OD), painel 'Índices(zona de 8mm)', campo 'IHD'" },
+    { "id": "ihd_os", "rotulo": "IHD – índice de descentração de altura - OE", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "origem": "página 'Topométrico / Estadiamento KC' (arquivo OE), painel 'Índices(zona de 8mm)', campo 'IHD'" },
+    { "id": "rmin_od", "rotulo": "Rmín – menor raio de curvatura (mm) - OD", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "unidade": "mm", "origem": "página 'Topométrico / Estadiamento KC' (arquivo OD), painel 'Índices(zona de 8mm)', campo 'RMin'" },
+    { "id": "rmin_os", "rotulo": "Rmín – menor raio de curvatura (mm) - OE", "categoria": "indices_ectasia", "tipo": "numero", "obrigatorio": false, "unidade": "mm", "origem": "página 'Topométrico / Estadiamento KC' (arquivo OE), painel 'Índices(zona de 8mm)', campo 'RMin'" },
+    { "id": "tkc_od", "rotulo": "TKC – Topographic Keratoconus Classification - OD", "categoria": "indices_ectasia", "tipo": "texto", "obrigatorio": false, "origem": "página 'Topométrico / Estadiamento KC' (arquivo OD), painel 'Índices(zona de 8mm)', campo 'TKC' (pode aparecer como '-' quando não há classificação; nesse caso responda '-')" },
+    { "id": "tkc_os", "rotulo": "TKC – Topographic Keratoconus Classification - OE", "categoria": "indices_ectasia", "tipo": "texto", "obrigatorio": false, "origem": "página 'Topométrico / Estadiamento KC' (arquivo OE), painel 'Índices(zona de 8mm)', campo 'TKC'" }
+  ],
+
+  "campos_calculados_automaticamente": {
+    "descricao": "Estes campos NÃO são pedidos à IA — são calculados pelo próprio programa (nucleo_laudo.py), de forma determinística, a partir dos outros dados.",
+    "idade": "Calculada a partir de data_nascimento e data_exame.",
+    "data_geracao_laudo": "Data/hora em que o laudo foi gerado pelo programa.",
+    "nome_medico": "Vem de 'medico_responsavel.nome' neste arquivo.",
+    "crm_medico": "Vem de 'medico_responsavel.crm' neste arquivo."
+  },
+
+  "opcoes_extracao": {
+    "max_paginas_por_pdf": 9,
+    "dpi_imagem": 150,
+    "qualidade_jpeg": 85,
+    "max_tokens_resposta": 5500
+  }
+}

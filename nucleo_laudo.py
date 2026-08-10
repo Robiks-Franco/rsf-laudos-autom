@@ -123,6 +123,11 @@ EQUIPAMENTOS_SUPORTADOS = {
         "config": "config_nidek.json",
         "template": "template_laudo_nidek.docx",
     },
+    "pentacam": {
+        "nome_exibicao": "Pentacam® (Oculus) — Tomografia de Córnea",
+        "config": "config_pentacam.json",
+        "template": "template_laudo_pentacam.docx",
+    },
 }
 
 

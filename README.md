@@ -1,30 +1,35 @@
-# Automação de Laudos de OCT — Ocular Oftalmologia
+# Automação de Laudos de Exames Oftalmológicos — Ocular Oftalmologia
 
-Sistema para extrair automaticamente os dados de um exame de OCT
-(Tomografia de Coerência Óptica) usando a API da Claude (Anthropic) e
-gerar o laudo já preenchido em Word (.docx), junto com um arquivo JSON
-de auditoria/backup dos dados extraídos.
+Sistema para extrair automaticamente os dados de exames oftalmológicos
+(OCT, tomografia de córnea, e outros que forem adicionados) usando a
+API da Claude (Anthropic) e gerar o laudo já preenchido em Word
+(.docx), junto com um arquivo JSON de auditoria/backup dos dados
+extraídos.
 
 **Equipamentos suportados atualmente:**
 
-| Equipamento | Chave interna | Status |
-|---|---|---|
-| Zeiss Cirrus HD-OCT | `zeiss` | ✅ Disponível |
-| Nidek RS-3000 Advance (RetinaScan Advance) | `nidek` | ✅ Disponível |
-| Topcon Triton (DRI OCT Triton / Triton Plus) | `topcon` | 🕓 Planejado — aguardando PDFs de exemplo para configurar |
+| Equipamento | Tipo de exame | Chave interna | Status |
+|---|---|---|---|
+| Zeiss Cirrus HD-OCT | OCT (retina/nervo óptico) | `zeiss` | ✅ Disponível |
+| Nidek RS-3000 Advance (RetinaScan Advance) | OCT (retina/nervo óptico) | `nidek` | ✅ Disponível |
+| Pentacam® (Oculus) | Tomografia de córnea (Scheimpflug) | `pentacam` | ✅ Disponível |
+| Topcon Triton (DRI OCT Triton / Triton Plus) | OCT Swept-Source + retinografia | `topcon` | 🕓 Planejado — aguardando PDFs de exemplo para configurar |
 
 Ao abrir o programa (de mesa ou web), você escolhe o equipamento usado
 naquele exame em um seletor — o restante do fluxo é idêntico. Cada
 equipamento tem seu próprio arquivo de configuração (`config_*.json`)
 e seu próprio modelo de laudo (`template_laudo_*.docx`); veja a seção
-9 para saber como adicionar um novo.
+9 para saber como adicionar um novo (seja um novo equipamento de OCT,
+seja um exame completamente diferente, como já foi feito com o
+Pentacam).
 
 **Um exame completo normalmente é composto por vários PDFs** — cada
-equipamento exporta um arquivo separado para cada protocolo de
-varredura (no Zeiss Cirrus: Macular Cube - Macular Thickness, Macular
+equipamento exporta um arquivo separado por protocolo de varredura ou
+por olho (no Zeiss Cirrus: Macular Cube - Macular Thickness, Macular
 Cube - Ganglion Cell, Optic Disc Cube - ONH and RNFL, HD 5 Line Raster
 OD e OS; no Nidek RS-3000: Macula Map OD/OE, Disc Map, Macula Radial,
-Macula Line, Angio OCT OD/OE). O programa permite selecionar todos
+Macula Line, Angio OCT OD/OE; no Pentacam: um PDF para o olho direito
+e outro para o olho esquerdo). O programa permite selecionar todos
 esses PDFs de uma vez e combina os dados de todos eles em um único
 laudo, com os parâmetros de OD e OE lado a lado.
 
@@ -51,6 +56,8 @@ config_oct.json                 -> configuração dos campos — Zeiss Cirrus HD
 template_laudo.docx               -> modelo do laudo em Word — Zeiss Cirrus HD-OCT
 config_nidek.json                   -> configuração dos campos — Nidek RS-3000 Advance
 template_laudo_nidek.docx             -> modelo do laudo em Word — Nidek RS-3000 Advance
+config_pentacam.json                    -> configuração dos campos — Pentacam® (Oculus)
+template_laudo_pentacam.docx              -> modelo do laudo em Word — Pentacam® (Oculus)
 requirements.txt                        -> dependências do aplicativo de mesa
 requirements_web.txt                      -> dependências do aplicativo web (inclui as de cima + FastAPI)
 exemplo/                                    -> dados fictícios e scripts de teste sem precisar de PDF/API
@@ -132,14 +139,16 @@ de API, use os scripts de teste com dados fictícios — um para cada
 equipamento:
 
 ```
-python exemplo/teste_geracao_laudo.py          (Zeiss Cirrus HD-OCT)
-python exemplo/teste_geracao_laudo_nidek.py     (Nidek RS-3000 Advance)
+python exemplo/teste_geracao_laudo.py            (Zeiss Cirrus HD-OCT)
+python exemplo/teste_geracao_laudo_nidek.py       (Nidek RS-3000 Advance)
+python exemplo/teste_geracao_laudo_pentacam.py     (Pentacam® Oculus)
 ```
 
 Cada script pega os dados de `exemplo/dados_exemplo_oct.json` (ou
-`dados_exemplo_nidek.json`), calcula os campos automáticos (idade,
-protocolo), valida e gera o laudo `.docx` + `.json` correspondente na
-pasta `exemplo/` — útil para testar o template Word sem chamar a API.
+`dados_exemplo_nidek.json`/`dados_exemplo_pentacam.json`), calcula os
+campos automáticos (idade, protocolo quando aplicável), valida e gera
+o laudo `.docx` + `.json` correspondente na pasta `exemplo/` — útil
+para testar o template Word sem chamar a API.
 
 ## 6. Como funciona (visão geral)
 
@@ -233,10 +242,12 @@ automaticamente listados em `"campos_calculados_automaticamente"`
 ## 9. Adicionando novos equipamentos ou tipos de exame
 
 O sistema foi desenhado para ser reaproveitado em outros equipamentos
-de OCT (ex: Topcon Triton) ou outros tipos de exame (Campo Visual,
-Topografia, Biometria...), sem alterar a lógica em `nucleo_laudo.py`.
-Tudo passa por um único registro central, `EQUIPAMENTOS_SUPORTADOS`,
-no topo de `nucleo_laudo.py`:
+de OCT (ex: Topcon Triton) ou em exames completamente diferentes de
+OCT — foi exatamente assim que o Pentacam® (tomografia de córnea) foi
+adicionado, sem alterar uma linha da lógica em `nucleo_laudo.py`. O
+mesmo caminho serve para Campo Visual, Biometria, ou qualquer outro
+exame que gere PDF. Tudo passa por um único registro central,
+`EQUIPAMENTOS_SUPORTADOS`, no topo de `nucleo_laudo.py`:
 
 ```python
 EQUIPAMENTOS_SUPORTADOS = {
@@ -249,6 +260,11 @@ EQUIPAMENTOS_SUPORTADOS = {
         "nome_exibicao": "Nidek RS-3000 Advance",
         "config": "config_nidek.json",
         "template": "template_laudo_nidek.docx",
+    },
+    "pentacam": {
+        "nome_exibicao": "Pentacam® (Oculus) — Tomografia de Córnea",
+        "config": "config_pentacam.json",
+        "template": "template_laudo_pentacam.docx",
     },
 }
 ```
