@@ -1,0 +1,65 @@
+{
+  "tipo_exame": "CAMPO_VISUAL_OCTOPUS",
+  "nome_exibicao": "Campo Visual — Perimetria Computadorizada (Octopus 600)",
+  "versao_config": "1.0",
+  "descricao": "Configuração de campos, validações e prompt de extração para laudos de Campo Visual (perimetria computadorizada) feitos no equipamento Octopus 600 (Haag-Streit). Um exame completo é composto por DOIS PDFs — um para o olho direito (OD) e outro para o olho esquerdo (OE). Cada PDF pode ser: (a) um relatório de exame único ('7-in-1', com Greyscale, Polar Analysis, Defect Curve, Comparisons, Corrected Comparisons, Probabilities e Cluster Analysis), ou (b) um relatório de evolução/série ('Series', com várias colunas mostrando exames em datas diferentes lado a lado). O sistema combina os dois PDFs (OD+OE) em um único laudo, sempre de UMA folha A4.",
+
+  "modelo_claude": "claude-sonnet-5",
+
+  "medico_responsavel": {
+    "nome": "Dr. Robson Silva Franco",
+    "crm": "CRM/MG 32.320"
+  },
+
+  "palavras_chave_verificacao": ["octopus", "haag-streit", "haag streit"],
+
+  "prompt_extracao_base": "Você é um assistente especializado em oftalmologia que auxilia um médico oftalmologista a transcrever dados de um exame de Campo Visual (perimetria computadorizada) feito no equipamento Octopus 600 (Haag-Streit). O exame completo é composto por DOIS arquivos PDF — um para o olho direito (OD) e outro para o olho esquerdo (OE). Os arquivos foram convertidos em imagens e são apresentados a seguir, cada um identificado pelo nome do arquivo de origem.\n\nATENÇÃO: existem DOIS formatos possíveis de relatório, e você precisa identificar qual foi enviado:\n1) Relatório de EXAME ÚNICO ('7-in-1'): mostra um só exame, com os campos 'Examination parameters', 'Refraction, lens (S/C/A), pupil', 'False Positives/Negatives', 'Fixation control' no topo, e uma caixa 'Indices' à direita com MD, sLV, DD, LD, MS.\n2) Relatório de EVOLUÇÃO/SÉRIE ('Series'): mostra VÁRIAS colunas lado a lado, uma por data de exame (formato paisagem). Nesse caso, use APENAS a coluna MAIS RECENTE (a última à direita) para preencher os campos — ignore as colunas de datas anteriores. Repare que relatórios 'Series' normalmente só mostram FP, FN, MD e sLV (não mostram DD, LD, MS nem controle de fixação) — nesse caso retorne null para os campos que não aparecem.\n\nRegras de leitura:\n- Os campos 'Examination parameters' (ex: 'G, TOP, SAP, White/White, III') e 'Refraction, lens (S/C/A), pupil' (ex: '-, -, 4.4 mm') devem ser transcritos exatamente como aparecem, como uma única string.\n- Falsos-positivos e falsos-negativos aparecem em formatos diferentes conforme o relatório: no '7-in-1' como 'XX% (n/m)' (percentual primeiro); no 'Series' como 'n/m (XX%)' (fração primeiro). Transcreva sempre no formato 'XX% (n/m)'.\n- As datas de nascimento e de exame no Octopus aparecem no formato americano mês/dia/ano (M/D/AAAA) — converta corretamente para o padrão brasileiro dia/mês/ano ao transcrever (ex: '4/16/2018' = 16 de abril de 2018 = '16/04/2018'; '2/26/2025' = 26 de fevereiro de 2025 = '26/02/2025').\n- O nome do paciente pode ter uma vírgula ou pontuação sobreposta ao texto por causa do desenho do relatório (ex: 'LEMOS, ENZO SOUZA,') — remova pontuação estranha e capitalize normalmente (ex: 'Enzo Souza Lemos' ou mantenha 'Lemos, Enzo Souza' conforme aparecer, sem a vírgula sobrando no final).\n- Não faça diagnóstico nem classificação de padrão de defeito (isso fica a cargo do médico). Apenas transcreva os números e textos exibidos. Se um campo não estiver visível em nenhum dos PDFs fornecidos, retorne null — não invente.",
+
+  "campos": [
+    { "id": "nome_paciente", "rotulo": "Nome do Paciente", "categoria": "identificacao", "tipo": "texto", "obrigatorio": true },
+    { "id": "data_nascimento", "rotulo": "Data de Nascimento", "categoria": "identificacao", "tipo": "data", "obrigatorio": true, "origem": "Formato M/D/AAAA no relatório — converter para dd/mm/aaaa" },
+    { "id": "prontuario", "rotulo": "ID do Paciente (Patient ID)", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false },
+    { "id": "data_exame", "rotulo": "Data do Exame (mais recente, se houver várias colunas)", "categoria": "identificacao", "tipo": "data", "obrigatorio": true, "origem": "Formato M/D/AAAA no relatório — converter para dd/mm/aaaa. Em relatório 'Series', use a data da última coluna (mais recente)." },
+    { "id": "equipamento", "rotulo": "Modelo/Marca do Equipamento", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false, "exemplos": ["Octopus 600 (Haag-Streit)"], "origem": "Rodapé do relatório (texto grande 'OCTOPUS 600')" },
+    { "id": "indicacao_clinica", "rotulo": "Indicação Clínica do Exame", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false, "origem": "Não consta no PDF do equipamento — normalmente é preenchida manualmente pelo médico; retorne null" },
+    { "id": "acuidade_visual", "rotulo": "Acuidade Visual (c/ correção) OD/OE", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false, "origem": "Raramente presente no PDF do Octopus — normalmente preenchida manualmente pelo médico; retorne null se não encontrar" },
+
+    { "id": "parametros_exame_od", "rotulo": "Parâmetros do Exame - OD", "categoria": "parametros_exame", "tipo": "texto", "obrigatorio": false, "origem": "campo 'Examination parameters' (arquivo OD), transcrever exatamente (ex: 'G, TOP, SAP, White/White, III'). Se for relatório 'Series', use a coluna mais recente." },
+    { "id": "parametros_exame_os", "rotulo": "Parâmetros do Exame - OE", "categoria": "parametros_exame", "tipo": "texto", "obrigatorio": false, "origem": "campo 'Examination parameters' (arquivo OE), mesma regra do OD" },
+    { "id": "refracao_pupila_od", "rotulo": "Refração, Lente, Pupila - OD", "categoria": "parametros_exame", "tipo": "texto", "obrigatorio": false, "origem": "campo 'Refraction, lens (S/C/A), pupil' (arquivo OD), transcrever exatamente (ex: '-, -, 4.4 mm'). Só disponível em relatório '7-in-1'." },
+    { "id": "refracao_pupila_os", "rotulo": "Refração, Lente, Pupila - OE", "categoria": "parametros_exame", "tipo": "texto", "obrigatorio": false, "origem": "campo 'Refraction, lens (S/C/A), pupil' (arquivo OE), mesma regra do OD" },
+
+    { "id": "controle_fixacao_od", "rotulo": "Controle de Fixação - OD", "categoria": "indices_confiabilidade", "tipo": "texto", "obrigatorio": false, "origem": "campo 'Fixation control' (arquivo OD, ex: 'Med'). Só disponível em relatório '7-in-1' — em 'Series' retorne null" },
+    { "id": "controle_fixacao_os", "rotulo": "Controle de Fixação - OE", "categoria": "indices_confiabilidade", "tipo": "texto", "obrigatorio": false, "origem": "campo 'Fixation control' (arquivo OE), mesma regra do OD" },
+    { "id": "falsos_positivos_od", "rotulo": "Falsos-Positivos (%) - OD", "categoria": "indices_confiabilidade", "tipo": "texto", "obrigatorio": false, "origem": "campo 'False Positives' (arquivo OD), formatar como 'XX% (n/m)'. Em 'Series', usar a coluna mais recente" },
+    { "id": "falsos_positivos_os", "rotulo": "Falsos-Positivos (%) - OE", "categoria": "indices_confiabilidade", "tipo": "texto", "obrigatorio": false, "origem": "campo 'False Positives' (arquivo OE), mesma regra do OD" },
+    { "id": "falsos_negativos_od", "rotulo": "Falsos-Negativos (%) - OD", "categoria": "indices_confiabilidade", "tipo": "texto", "obrigatorio": false, "origem": "campo 'False Negatives' (arquivo OD), formatar como 'XX% (n/m)'. Em 'Series', usar a coluna mais recente" },
+    { "id": "falsos_negativos_os", "rotulo": "Falsos-Negativos (%) - OE", "categoria": "indices_confiabilidade", "tipo": "texto", "obrigatorio": false, "origem": "campo 'False Negatives' (arquivo OE), mesma regra do OD" },
+
+    { "id": "md_od", "rotulo": "MD [dB] e p - OD", "categoria": "indices_globais", "tipo": "texto", "obrigatorio": false, "origem": "caixa 'Indices' ou linha 'Reliability and Indices' (arquivo OD), campo 'MD' + valor de p entre parênteses, formato '9.7 dB (p < 5%)'" },
+    { "id": "md_os", "rotulo": "MD [dB] e p - OE", "categoria": "indices_globais", "tipo": "texto", "obrigatorio": false, "origem": "mesma regra do OD, arquivo OE" },
+    { "id": "slv_od", "rotulo": "sLV [dB] e p - OD", "categoria": "indices_globais", "tipo": "texto", "obrigatorio": false, "origem": "caixa 'Indices' ou linha 'Reliability and Indices' (arquivo OD), campo 'sLV' + valor de p, formato '5.6 dB (p < 5%)'" },
+    { "id": "slv_os", "rotulo": "sLV [dB] e p - OE", "categoria": "indices_globais", "tipo": "texto", "obrigatorio": false, "origem": "mesma regra do OD, arquivo OE" },
+    { "id": "dd_od", "rotulo": "DD [dB] e p - OD", "categoria": "indices_globais", "tipo": "texto", "obrigatorio": false, "origem": "caixa 'Indices' (arquivo OD), campo 'DD' + p. Só disponível em relatório '7-in-1' — em 'Series' retorne null" },
+    { "id": "dd_os", "rotulo": "DD [dB] e p - OE", "categoria": "indices_globais", "tipo": "texto", "obrigatorio": false, "origem": "mesma regra do OD, arquivo OE" },
+    { "id": "ld_od", "rotulo": "LD [dB] e p - OD", "categoria": "indices_globais", "tipo": "texto", "obrigatorio": false, "origem": "caixa 'Indices' (arquivo OD), campo 'LD' + p. Só disponível em relatório '7-in-1' — em 'Series' retorne null" },
+    { "id": "ld_os", "rotulo": "LD [dB] e p - OE", "categoria": "indices_globais", "tipo": "texto", "obrigatorio": false, "origem": "mesma regra do OD, arquivo OE" },
+    { "id": "ms_od", "rotulo": "MS [dB] - OD", "categoria": "indices_globais", "tipo": "numero", "obrigatorio": false, "unidade": "dB", "origem": "caixa 'Indices' (arquivo OD), campo 'MS' (sem valor de p). Só disponível em relatório '7-in-1' — em 'Series' retorne null" },
+    { "id": "ms_os", "rotulo": "MS [dB] - OE", "categoria": "indices_globais", "tipo": "numero", "obrigatorio": false, "unidade": "dB", "origem": "mesma regra do OD, arquivo OE" }
+  ],
+
+  "campos_calculados_automaticamente": {
+    "descricao": "Estes campos NÃO são pedidos à IA — são calculados pelo próprio programa (nucleo_laudo.py), de forma determinística, a partir dos outros dados.",
+    "idade": "Calculada a partir de data_nascimento e data_exame.",
+    "data_geracao_laudo": "Data/hora em que o laudo foi gerado pelo programa.",
+    "nome_medico": "Vem de 'medico_responsavel.nome' neste arquivo.",
+    "crm_medico": "Vem de 'medico_responsavel.crm' neste arquivo."
+  },
+
+  "opcoes_extracao": {
+    "max_paginas_por_pdf": 1,
+    "dpi_imagem": 250,
+    "qualidade_jpeg": 90,
+    "max_tokens_resposta": 2800
+  }
+}

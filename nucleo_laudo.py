@@ -128,6 +128,11 @@ EQUIPAMENTOS_SUPORTADOS = {
         "config": "config_pentacam.json",
         "template": "template_laudo_pentacam.docx",
     },
+    "campo_visual": {
+        "nome_exibicao": "Octopus 600 (Haag-Streit) — Campo Visual",
+        "config": "config_campo_visual.json",
+        "template": "template_laudo_campo_visual.docx",
+    },
 }
 
 
