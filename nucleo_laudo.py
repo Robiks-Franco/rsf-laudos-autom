@@ -142,21 +142,37 @@ EQUIPAMENTOS_SUPORTADOS = {
 # reaproveitáveis por qualquer parte do sistema (e fáceis de testar).
 # ===================================================================
 
-# Formatos de data aceitos na entrada, na ordem em que são tentados.
-_FORMATOS_DATA_ACEITOS = ("%d/%m/%Y", "%m/%d/%Y", "%Y-%m-%d", "%d-%m-%Y")
+# Formatos de data aceitos na entrada. IMPORTANTE: datas como "03/04/1978"
+# são AMBÍGUAS — podem ser 3 de abril (dd/mm) ou 4 de março (mm/dd) — e as
+# duas leituras costumam gerar uma idade "plausível" (às vezes só 1 ano de
+# diferença), então um erro de interpretação aqui não é óbvio de detectar
+# depois. Por isso a ORDEM em que os formatos são tentados importa muito:
+# cada equipamento tem um formato "nativo" conhecido (o que aparece
+# impresso no próprio exame), guardado em "formato_data_origem" no
+# config_*.json — ver ExamConfig.formato_data_origem. Tentamos esse
+# formato primeiro; os demais ficam como reserva, caso a IA já tenha
+# convertido a data por conta própria.
+_FORMATOS_POR_ORIGEM = {
+    # "MDY" = mês/dia/ano (padrão americano — ex: Zeiss Cirrus, Octopus 600)
+    "MDY": ("%m/%d/%Y", "%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"),
+    # "DMY" = dia/mês/ano (padrão brasileiro — usado como padrão quando o
+    # equipamento não declara "formato_data_origem" no config)
+    "DMY": ("%d/%m/%Y", "%m/%d/%Y", "%Y-%m-%d", "%d-%m-%Y"),
+}
 
 
-def tentar_parsear_data(texto: str):
+def tentar_parsear_data(texto: str, formato_origem: str = "DMY"):
     """
-    Tenta interpretar uma string de data em vários formatos possíveis
-    (o equipamento Zeiss Cirrus exporta datas no formato americano
-    M/D/AAAA, mas a IA pode ou não convertê-las). Retorna um objeto
-    'date' do Python em caso de sucesso, ou None se não conseguir.
+    Tenta interpretar uma string de data, priorizando o formato nativo
+    do equipamento de origem ('formato_origem': "MDY" ou "DMY") para
+    resolver corretamente datas ambíguas como "03/04/1978". Retorna um
+    objeto 'date' do Python em caso de sucesso, ou None se não conseguir.
     """
     if not texto or not isinstance(texto, str):
         return None
     texto = texto.strip()
-    for formato in _FORMATOS_DATA_ACEITOS:
+    formatos = _FORMATOS_POR_ORIGEM.get(formato_origem, _FORMATOS_POR_ORIGEM["DMY"])
+    for formato in formatos:
         try:
             return datetime.strptime(texto, formato).date()
         except ValueError:
@@ -164,14 +180,14 @@ def tentar_parsear_data(texto: str):
     return None
 
 
-def normalizar_data(texto: str) -> str:
+def normalizar_data(texto: str, formato_origem: str = "DMY") -> str:
     """
-    Converte uma data para o formato brasileiro dd/mm/aaaa, aceitando
-    também o formato americano mm/dd/aaaa (comum nas exportações do
-    equipamento). Se não conseguir interpretar, devolve o texto original
-    sem alteração (para não perder a informação).
+    Converte uma data para o formato brasileiro dd/mm/aaaa, interpretando
+    corretamente o formato nativo do equipamento de origem. Se não
+    conseguir interpretar, devolve o texto original sem alteração (para
+    não perder a informação).
     """
-    data = tentar_parsear_data(texto)
+    data = tentar_parsear_data(texto, formato_origem)
     if data is None:
         return texto
     return data.strftime("%d/%m/%Y")
@@ -180,12 +196,15 @@ def normalizar_data(texto: str) -> str:
 def calcular_idade(data_nascimento_texto: str, data_referencia_texto: str) -> str:
     """
     Calcula a idade (em anos completos) a partir da data de nascimento
-    e da data do exame. Retorna uma string como "73 anos", ou None se
-    não for possível calcular (datas ausentes/ilegíveis) — nesse caso
-    o campo simplesmente fica em branco no laudo, sem travar o programa.
+    e da data do exame. Espera que ambas as datas já tenham sido
+    normalizadas para dd/mm/aaaa (ver normalizar_data) antes de chegar
+    aqui. Retorna uma string como "73 anos", ou None se não for possível
+    calcular (datas ausentes/ilegíveis, ou idade fora de uma faixa
+    plausível) — nesse caso o campo simplesmente fica em branco no
+    laudo, sem travar o programa.
     """
-    nascimento = tentar_parsear_data(data_nascimento_texto)
-    referencia = tentar_parsear_data(data_referencia_texto) or date.today()
+    nascimento = tentar_parsear_data(data_nascimento_texto, "DMY")
+    referencia = tentar_parsear_data(data_referencia_texto, "DMY") or date.today()
     if nascimento is None:
         return None
     anos = referencia.year - nascimento.year
@@ -260,12 +279,40 @@ def completar_campos_automaticos(dados: dict, nomes_arquivos: list, config: "Exa
     """
     dados = dict(dados)
 
-    if dados.get("data_nascimento"):
-        dados["data_nascimento"] = normalizar_data(dados["data_nascimento"])
-    if dados.get("data_exame"):
-        dados["data_exame"] = normalizar_data(dados["data_exame"])
+    formato_origem = config.formato_data_origem
+    nascimento_bruto = dados.get("data_nascimento")
+    exame_bruto = dados.get("data_exame")
+
+    if nascimento_bruto:
+        dados["data_nascimento"] = normalizar_data(nascimento_bruto, formato_origem)
+    if exame_bruto:
+        dados["data_exame"] = normalizar_data(exame_bruto, formato_origem)
 
     idade_calculada = calcular_idade(dados.get("data_nascimento"), dados.get("data_exame"))
+
+    # Rede de segurança: se a idade deu implausível (None: negativa, maior
+    # que 130 anos, ou data ilegível) usando o formato nativo esperado do
+    # equipamento, tenta novamente assumindo que a IA já converteu a data
+    # sozinha para o formato oposto (isso acontece às vezes, apesar da
+    # instrução no prompt para transcrever a data literalmente). Só troca
+    # se essa segunda tentativa realmente resultar em uma idade válida —
+    # caso contrário mantém o resultado original (incluindo o "None").
+    if idade_calculada is None and (nascimento_bruto or exame_bruto):
+        formato_alternativo = "MDY" if formato_origem == "DMY" else "DMY"
+        nascimento_alt = (
+            normalizar_data(nascimento_bruto, formato_alternativo)
+            if nascimento_bruto else dados.get("data_nascimento")
+        )
+        exame_alt = (
+            normalizar_data(exame_bruto, formato_alternativo)
+            if exame_bruto else dados.get("data_exame")
+        )
+        idade_alt = calcular_idade(nascimento_alt, exame_alt)
+        if idade_alt is not None:
+            dados["data_nascimento"] = nascimento_alt
+            dados["data_exame"] = exame_alt
+            idade_calculada = idade_alt
+
     if idade_calculada:
         dados["idade"] = idade_calculada
 
@@ -366,6 +413,24 @@ class ExamConfig:
         """
         return [p.lower() for p in self.dados_config.get("palavras_chave_verificacao", [])]
 
+    @property
+    def formato_data_origem(self) -> str:
+        """
+        Formato nativo em que ESTE equipamento imprime as datas no PDF do
+        exame: "MDY" (mês/dia/ano — padrão americano, ex: Zeiss Cirrus e
+        Octopus 600) ou "DMY" (dia/mês/ano — padrão brasileiro, usado como
+        valor padrão quando o config não declara isso explicitamente).
+
+        Isso existe porque datas como "03/04/1978" são ambíguas (podem
+        ser 3 de abril ou 4 de março) e as duas leituras costumam gerar
+        uma idade "plausível" — então, sem saber o formato nativo de cada
+        equipamento, o sistema não tinha como saber qual interpretação
+        estava correta, e já calculou idade errada por causa disso. Ver
+        tentar_parsear_data/normalizar_data/completar_campos_automaticos.
+        """
+        valor = self.dados_config.get("formato_data_origem", "DMY")
+        return valor if valor in ("MDY", "DMY") else "DMY"
+
     # ---------------- Métodos utilitários ----------------
     def obter_campo(self, campo_id: str) -> dict:
         """Retorna a definição de um campo específico pelo seu id."""
@@ -421,7 +486,14 @@ class ExamConfig:
             "cada campo devem ser lidos, conforme indicado entre parênteses em cada campo acima.\n"
             "5. Números devem ser retornados sem unidade (a unidade já é conhecida pelo sistema) e "
             "usando ponto como separador decimal (ex: 0.63, não 0,63).\n"
-            "6. Datas devem ser retornadas no formato dd/mm/aaaa.\n"
+            "6. Para os campos de data, transcreva EXATAMENTE os números como aparecem "
+            "impressos no exame, na mesma ordem (dia/mês/ano ou mês/dia/ano, o que for "
+            "impresso) e separados por '/'. NÃO tente reordenar ou converter dia e mês — "
+            "mesmo que o resultado pareça estranho, apenas copie os números exibidos. "
+            "O sistema já sabe o formato nativo deste equipamento e faz essa conversão "
+            "sozinho depois, de forma confiável; se a IA tentar converter, corre o risco "
+            "de errar em datas ambíguas (ex: '03/04/1978' pode ser 3 de abril ou 4 de "
+            "março) e isso já causou cálculo de idade errado no passado.\n"
             "7. Não faça diagnóstico nem interpretação clínica: apenas transcreva os dados exibidos.\n\n"
             f"Formato exato esperado (chaves, com valores de exemplo nulos):\n{exemplo_json_texto}"
         )

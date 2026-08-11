@@ -21,6 +21,8 @@
 
   "palavras_chave_verificacao": ["nidek", "rs-3000", "rs3000", "retinascan"],
 
+  "formato_data_origem": "DMY",
+
   "prompt_extracao_base": "Você é um assistente especializado em oftalmologia que auxilia um médico oftalmologista a transcrever dados de um exame de Tomografia de Coerência Óptica (OCT), equipamento Nidek RS-3000 Advance (RetinaScan Advance). O exame completo é composto por um ou mais arquivos PDF (impressões do equipamento), cada um referente a um protocolo de varredura diferente (ex: MACULA MAP X-Y, DISC MAP Y-X, MACULA RADIAL, MACULA LINE, MACULA MAP A X-Y / AngioScan). Os arquivos foram convertidos em imagens (uma por página) e são apresentados a seguir, cada um identificado pelo nome do arquivo de origem. A maior parte dos valores numéricos aparece dentro de mapas/gráficos coloridos e tabelas pequenas (não como texto simples), então leia com atenção os números impressos nessas áreas — especialmente os números grandes e destacados em cada painel (ex: o valor central do mapa ETDRS, os valores 'Whole'/'S/I'/'TSNIT', e a tabela R/L de C/D e áreas). Analise cuidadosamente todas as imagens fornecidas antes de responder. Não faça diagnóstico nem interpretação clínica: apenas transcreva fielmente os dados numéricos e textuais exibidos no exame. Se um campo pertence a um protocolo cujo PDF não foi fornecido, retorne null para ele — não invente.",
 
   "campos": [
