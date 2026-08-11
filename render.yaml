@@ -9,7 +9,7 @@
 
 services:
   - type: web
-    name: laudos-oct-ocular-oftalmologia
+    name: laudos-ocular-oftalmologia
     runtime: python
     plan: starter
     buildCommand: "pip install -r requirements_web.txt"
