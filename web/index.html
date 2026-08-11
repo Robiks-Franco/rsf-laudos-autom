@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Laudos OCT — Ocular Oftalmologia</title>
+<title>Laudos de Exames — Ocular Oftalmologia</title>
 <style>
   :root {
     --azul: #1F3A5F;
@@ -172,6 +172,7 @@
     background: #FBEAE9;
     color: var(--vermelho);
     border: 1px solid #F1C1BE;
+    white-space: pre-line;
   }
   .caixa-mensagem.sucesso {
     background: #EAF6ED;
@@ -198,7 +199,7 @@
   <div class="cartao" id="tela-login">
     <header class="topo">
       <h1>OCULAR OFTALMOLOGIA</h1>
-      <p>Automação de Laudos de OCT</p>
+      <p>Automação de Laudos de Exames</p>
     </header>
     <h2 class="subtitulo">Acesso</h2>
     <label for="campo-senha">Senha de acesso</label>
@@ -217,18 +218,21 @@
   <div class="cartao" id="tela-principal" style="display:none;">
     <header class="topo">
       <h1>OCULAR OFTALMOLOGIA</h1>
-      <p>Automação de Laudos de OCT</p>
+      <p>Automação de Laudos de Exames</p>
     </header>
 
-    <h2 class="subtitulo">Gerar laudo de OCT</h2>
+    <h2 class="subtitulo">Gerar laudo de Exame</h2>
     <p style="font-size:0.85rem; color:var(--cinza-claro); margin-top:-8px;">
       Selecione o equipamento e TODOS os PDFs do exame (o exame normalmente
       exporta vários arquivos, um por protocolo de varredura).
       O sistema combina todos em um único laudo.
     </p>
 
-    <label for="campo-equipamento">Equipamento de OCT</label>
+    <label for="campo-equipamento">Equipamento</label>
     <select id="campo-equipamento"></select>
+    <p style="font-size:0.78rem; color:#8A6D00; margin:-8px 0 14px; font-weight:600;">
+      ⚠ Confira se este é o mesmo equipamento dos PDFs que você vai enviar.
+    </p>
 
     <div class="area-upload">
       <input type="file" id="input-arquivos" accept="application/pdf" multiple>
