@@ -1,0 +1,34 @@
+{
+  "_observacao": "Dados 100% FICTÍCIOS (paciente e valores inventados), usados apenas para testar a geração do laudo de Campo Visual (Octopus 600 / Haag-Streit) sem precisar de PDFs reais nem de chave de API. Não corresponde a nenhum paciente real.",
+
+  "nome_paciente": "Antônio Carlos Ribeiro",
+  "data_nascimento": "5/22/1961",
+  "prontuario": "112233",
+  "data_exame": "8/10/2026",
+  "equipamento": "Octopus 600 (Haag-Streit)",
+  "indicacao_clinica": "Acompanhamento de glaucoma",
+  "acuidade_visual": "20/20 OD / 20/25 OE",
+
+  "parametros_exame_od": "G, TOP, SAP, White/White, III",
+  "parametros_exame_os": "G, TOP, SAP, White/White, III",
+  "refracao_pupila_od": "-, -, 4.2 mm",
+  "refracao_pupila_os": "-, -, 4.1 mm",
+
+  "controle_fixacao_od": "Boa",
+  "controle_fixacao_os": "Med",
+  "falsos_positivos_od": "3% (1/33)",
+  "falsos_positivos_os": "6% (2/33)",
+  "falsos_negativos_od": "0% (0/33)",
+  "falsos_negativos_os": "3% (1/33)",
+
+  "md_od": "-2.3 dB (p < 5%)",
+  "md_os": "-4.8 dB (p < 1%)",
+  "slv_od": "2.1 dB (n.s.)",
+  "slv_os": "5.6 dB (p < 5%)",
+  "dd_od": "1.8 dB (n.s.)",
+  "dd_os": "3.4 dB (p < 5%)",
+  "ld_od": "1.5 dB (n.s.)",
+  "ld_os": "2.9 dB (p < 5%)",
+  "ms_od": 27.4,
+  "ms_os": 25.1
+}
