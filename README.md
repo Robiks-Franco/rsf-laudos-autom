@@ -1,7 +1,7 @@
 # Automação de Laudos de Exames Oftalmológicos — Ocular Oftalmologia
 
 Sistema para extrair automaticamente os dados de exames oftalmológicos
-(OCT, tomografia de córnea, e outros que forem adicionados) usando a
+(OCT, tomografia de córnea, campo visual, e outros que forem adicionados) usando a
 API da Claude (Anthropic) e gerar o laudo já preenchido em Word
 (.docx), junto com um arquivo JSON de auditoria/backup dos dados
 extraídos.
@@ -13,6 +13,7 @@ extraídos.
 | Zeiss Cirrus HD-OCT | OCT (retina/nervo óptico) | `zeiss` | ✅ Disponível |
 | Nidek RS-3000 Advance (RetinaScan Advance) | OCT (retina/nervo óptico) | `nidek` | ✅ Disponível |
 | Pentacam® (Oculus) | Tomografia de córnea (Scheimpflug) | `pentacam` | ✅ Disponível |
+| Octopus 600 (Haag-Streit) | Campo Visual (perimetria computadorizada) | `campo_visual` | ✅ Disponível |
 | Topcon Triton (DRI OCT Triton / Triton Plus) | OCT Swept-Source + retinografia | `topcon` | 🕓 Planejado — aguardando PDFs de exemplo para configurar |
 
 Ao abrir o programa (de mesa ou web), você escolhe o equipamento usado
@@ -21,7 +22,7 @@ equipamento tem seu próprio arquivo de configuração (`config_*.json`)
 e seu próprio modelo de laudo (`template_laudo_*.docx`); veja a seção
 9 para saber como adicionar um novo (seja um novo equipamento de OCT,
 seja um exame completamente diferente, como já foi feito com o
-Pentacam).
+Pentacam e com o Campo Visual).
 
 **Um exame completo normalmente é composto por vários PDFs** — cada
 equipamento exporta um arquivo separado por protocolo de varredura ou
@@ -29,9 +30,10 @@ por olho (no Zeiss Cirrus: Macular Cube - Macular Thickness, Macular
 Cube - Ganglion Cell, Optic Disc Cube - ONH and RNFL, HD 5 Line Raster
 OD e OS; no Nidek RS-3000: Macula Map OD/OE, Disc Map, Macula Radial,
 Macula Line, Angio OCT OD/OE; no Pentacam: um PDF para o olho direito
-e outro para o olho esquerdo). O programa permite selecionar todos
-esses PDFs de uma vez e combina os dados de todos eles em um único
-laudo, com os parâmetros de OD e OE lado a lado.
+e outro para o olho esquerdo; no Octopus 600/Campo Visual: um PDF para
+o olho direito e outro para o olho esquerdo). O programa permite
+selecionar todos esses PDFs de uma vez e combina os dados de todos
+eles em um único laudo, com os parâmetros de OD e OE lado a lado.
 
 Não é necessário usar terminal no dia a dia: o programa abre em uma
 janela simples, com um seletor de equipamento e botões para selecionar
@@ -58,6 +60,8 @@ config_nidek.json                   -> configuração dos campos — Nidek RS-30
 template_laudo_nidek.docx             -> modelo do laudo em Word — Nidek RS-3000 Advance
 config_pentacam.json                    -> configuração dos campos — Pentacam® (Oculus)
 template_laudo_pentacam.docx              -> modelo do laudo em Word — Pentacam® (Oculus)
+config_campo_visual.json                    -> configuração dos campos — Octopus 600 (Campo Visual)
+template_laudo_campo_visual.docx              -> modelo do laudo em Word — Octopus 600 (Campo Visual)
 requirements.txt                        -> dependências do aplicativo de mesa
 requirements_web.txt                      -> dependências do aplicativo web (inclui as de cima + FastAPI)
 exemplo/                                    -> dados fictícios e scripts de teste sem precisar de PDF/API
@@ -112,7 +116,8 @@ proporcional ao número de PDFs e páginas enviados.
 
 1. Rode o programa (duplo clique ou, em terminal: `python main.py`).
 2. No seletor **"Equipamento"**, escolha o equipamento usado naquele
-   exame (ex: "Zeiss Cirrus HD-OCT" ou "Nidek RS-3000 Advance").
+   exame (ex: "Zeiss Cirrus HD-OCT", "Nidek RS-3000 Advance", "Pentacam®
+   (Oculus)" ou "Octopus 600 (Haag-Streit) — Campo Visual").
 3. Clique em **"1. Selecionar PDFs do Exame"** e marque **todos** os
    PDFs daquele exame (você pode selecionar vários arquivos de uma vez
    na mesma janela — segure Ctrl e clique em cada um, ou Shift para
@@ -139,16 +144,26 @@ de API, use os scripts de teste com dados fictícios — um para cada
 equipamento:
 
 ```
-python exemplo/teste_geracao_laudo.py            (Zeiss Cirrus HD-OCT)
-python exemplo/teste_geracao_laudo_nidek.py       (Nidek RS-3000 Advance)
-python exemplo/teste_geracao_laudo_pentacam.py     (Pentacam® Oculus)
+python exemplo/teste_geracao_laudo.py                  (Zeiss Cirrus HD-OCT)
+python exemplo/teste_geracao_laudo_nidek.py             (Nidek RS-3000 Advance)
+python exemplo/teste_geracao_laudo_pentacam.py           (Pentacam® Oculus)
+python exemplo/teste_geracao_laudo_campo_visual.py        (Octopus 600 — Campo Visual)
 ```
 
+> **Importante:** esses scripts precisam estar **dentro da pasta
+> `exemplo/`** para funcionar — eles descobrem o caminho da pasta
+> principal do programa (`config_*.json`, `template_laudo_*.docx`) a
+> partir da própria localização do arquivo (`Path(__file__).parent`).
+> Se algum desses scripts (ou o `dados_exemplo_*.json` correspondente)
+> acabar sendo enviado para a raiz do repositório por engano, mova-o
+> para dentro de `exemplo/` antes de rodar, ou ele não vai encontrar a
+> configuração/template corretos.
+
 Cada script pega os dados de `exemplo/dados_exemplo_oct.json` (ou
-`dados_exemplo_nidek.json`/`dados_exemplo_pentacam.json`), calcula os
-campos automáticos (idade, protocolo quando aplicável), valida e gera
-o laudo `.docx` + `.json` correspondente na pasta `exemplo/` — útil
-para testar o template Word sem chamar a API.
+`dados_exemplo_nidek.json`/`dados_exemplo_pentacam.json`/`dados_exemplo_campo_visual.json`),
+calcula os campos automáticos (idade, protocolo quando aplicável),
+valida e gera o laudo `.docx` + `.json` correspondente na pasta
+`exemplo/` — útil para testar o template Word sem chamar a API.
 
 ## 6. Como funciona (visão geral)
 
@@ -189,7 +204,12 @@ Esta seção descreve `config_oct.json` (Zeiss Cirrus). O Nidek RS-3000
 Advance segue a mesma lógica em `config_nidek.json`, com uma seção a
 mais (Angiografia OCT/AngioScan) e nomenclatura de campos própria do
 equipamento (ex: SQI/SSI em vez de Signal Strength) — abra o arquivo
-para ver a lista completa de campos.
+para ver a lista completa de campos. O Pentacam (`config_pentacam.json`)
+e o Campo Visual/Octopus 600 (`config_campo_visual.json`) seguem a
+mesma estrutura geral, mas com seções e campos próprios do tipo de
+exame (ceratometria/paquimetria/índices de ectasia no Pentacam;
+índices de confiabilidade e índices globais MD/sLV/DD/LD/MS no Campo
+Visual).
 
 Os campos em `config_oct.json` seguem a estrutura de um laudo real de
 OCT (Zeiss Cirrus), organizada em 3 seções, com valores separados por
@@ -243,10 +263,11 @@ automaticamente listados em `"campos_calculados_automaticamente"`
 
 O sistema foi desenhado para ser reaproveitado em outros equipamentos
 de OCT (ex: Topcon Triton) ou em exames completamente diferentes de
-OCT — foi exatamente assim que o Pentacam® (tomografia de córnea) foi
-adicionado, sem alterar uma linha da lógica em `nucleo_laudo.py`. O
-mesmo caminho serve para Campo Visual, Biometria, ou qualquer outro
-exame que gere PDF. Tudo passa por um único registro central,
+OCT — foi exatamente assim que o Pentacam® (tomografia de córnea) e o
+Campo Visual/Octopus 600 (perimetria computadorizada) foram
+adicionados, sem alterar uma linha da lógica em `nucleo_laudo.py`. O
+mesmo caminho serve para Biometria, ou qualquer outro exame que gere
+PDF. Tudo passa por um único registro central,
 `EQUIPAMENTOS_SUPORTADOS`, no topo de `nucleo_laudo.py`:
 
 ```python
@@ -265,6 +286,11 @@ EQUIPAMENTOS_SUPORTADOS = {
         "nome_exibicao": "Pentacam® (Oculus) — Tomografia de Córnea",
         "config": "config_pentacam.json",
         "template": "template_laudo_pentacam.docx",
+    },
+    "campo_visual": {
+        "nome_exibicao": "Octopus 600 (Haag-Streit) — Campo Visual",
+        "config": "config_campo_visual.json",
+        "template": "template_laudo_campo_visual.docx",
     },
 }
 ```
@@ -289,7 +315,10 @@ aplicativo web (`app_web.py` + `web/index.html`), sem mais nenhuma
 alteração de código. É recomendável também criar um
 `exemplo/dados_exemplo_<equipamento>.json` e um
 `exemplo/teste_geracao_laudo_<equipamento>.py` (copiando os do Nidek
-como modelo) para validar o template sem precisar de PDFs reais.
+ou do Pentacam como modelo) para validar o template sem precisar de
+PDFs reais — **e lembre de enviar os dois para dentro da pasta
+`exemplo/` no GitHub, não para a raiz do repositório** (veja o aviso
+na seção 5).
 
 Todas as classes de `nucleo_laudo.py` (`ExamConfig`, `PDFExtractor`,
 `ValidadorDados`, `WordGenerator`, `GeradorLaudoOCT`) já recebem o
