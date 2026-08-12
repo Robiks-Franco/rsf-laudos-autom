@@ -117,6 +117,6 @@
     "max_paginas_por_pdf": 1,
     "dpi_imagem": 220,
     "qualidade_jpeg": 85,
-    "max_tokens_resposta": 4096
+    "max_tokens_resposta": 16384
   }
 }
