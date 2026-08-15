@@ -21,7 +21,7 @@
 
   "formato_data_origem": "MDY",
 
-  "prompt_extracao_base": "Você é um assistente especializado em oftalmologia que auxilia um médico oftalmologista a transcrever dados de um exame de Tomografia de Coerência Óptica (OCT), equipamento Topcon Maestro2 3D Disc Report w/ Topography. O exame é composto por um ou mais arquivos PDF (impressões do equipamento), focado especificamente na análise do disco óptico e camada de fibras nervosas (RNFL). Os arquivos foram convertidos em imagens (uma por página) e são apresentados a seguir, cada um identificado pelo nome do arquivo de origem. Leia com EXTREMA ATENÇÃO os valores numéricos em tabelas e gráficos: especialmente Disc Area, Cup Area, Rim Area (em mm²), C/D ratios, RNFL thickness (em µm), diâmetros do disco (mm), e volumes (mm³). Os valores aparecem em tabelas de 'Disc Topography', em gráficos tipo 'pie chart' para distribuição RNFL (N, S, T, I), e em mapas coloridos. Não faça diagnóstico nem interpretação clínica: apenas transcreva fielmente os dados numéricos e textuais exibidos. Se um campo não aparecer no PDF fornecido, retorne null para ele — não invente. Priorize precisão: se houver dúvida sobre um número, marque como '[incerto]' em vez de adivinhar.",
+  "prompt_extracao_base": "Você é um assistante especializado...",
 
   "campos": [
     { "id": "nome_paciente", "rotulo": "Nome do Paciente", "categoria": "identificacao", "tipo": "texto", "obrigatorio": true },
