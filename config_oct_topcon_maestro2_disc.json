@@ -1,0 +1,92 @@
+{
+  "tipo_exame": "OCT_TOPCON_MAESTRO2_DISC",
+  "nome_exibicao": "Topcon Maestro2 3D Disc Report",
+  "versao_config": "1.0",
+  "descricao": "Configuração de campos, validações e prompt de extração para laudos de OCT feitos no equipamento Topcon Maestro2, especificamente o relatório 3D Disc Report w/ Topography. Este relatório consolida análise completa de disco óptico (topografia, RNFL), com foco em estruturas relacionadas ao glaucoma.",
+
+  "modelo_claude": "claude-sonnet-5",
+
+  "medico_responsavel": {
+    "nome": "Dr. Robson Silva Franco",
+    "crm": "CRM/MG 32.320"
+  },
+
+  "protocolos_por_palavra_chave": [
+    ["DISC REPORT", "3D Disc Report w/ Topography (análise de disco)"],
+    ["3D DISC", "3D Disc Report (análise de disco)"],
+    ["TOPOGRAPHY", "Topografia de Disco Óptico"]
+  ],
+
+  "palavras_chave_verificacao": ["topcon", "maestro", "maestro2", "disc", "topography"],
+
+  "formato_data_origem": "MDY",
+
+  "prompt_extracao_base": "Você é um assistente especializado em oftalmologia que auxilia um médico oftalmologista a transcrever dados de um exame de Tomografia de Coerência Óptica (OCT), equipamento Topcon Maestro2 3D Disc Report w/ Topography. O exame é composto por um ou mais arquivos PDF (impressões do equipamento), focado especificamente na análise do disco óptico e camada de fibras nervosas (RNFL). Os arquivos foram convertidos em imagens (uma por página) e são apresentados a seguir, cada um identificado pelo nome do arquivo de origem. Leia com EXTREMA ATENÇÃO os valores numéricos em tabelas e gráficos: especialmente Disc Area, Cup Area, Rim Area (em mm²), C/D ratios, RNFL thickness (em µm), diâmetros do disco (mm), e volumes (mm³). Os valores aparecem em tabelas de 'Disc Topography', em gráficos tipo 'pie chart' para distribuição RNFL (N, S, T, I), e em mapas coloridos. Não faça diagnóstico nem interpretação clínica: apenas transcreva fielmente os dados numéricos e textuais exibidos. Se um campo não aparecer no PDF fornecido, retorne null para ele — não invente. Priorize precisão: se houver dúvida sobre um número, marque como '[incerto]' em vez de adivinhar.",
+
+  "campos": [
+    { "id": "nome_paciente", "rotulo": "Nome do Paciente", "categoria": "identificacao", "tipo": "texto", "obrigatorio": true },
+    { "id": "data_nascimento", "rotulo": "Data de Nascimento (BD)", "categoria": "identificacao", "tipo": "data", "obrigatorio": true },
+    { "id": "prontuario", "rotulo": "ID do Paciente", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false },
+    { "id": "data_exame", "rotulo": "Data do Exame (Capture Date)", "categoria": "identificacao", "tipo": "data", "obrigatorio": true },
+    { "id": "equipamento", "rotulo": "Modelo do Equipamento", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false, "exemplos": ["Topcon Maestro2"] },
+    { "id": "olho_od_os", "rotulo": "Olho Examinado (OD/OS)", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false, "exemplos": ["OD", "OS"] },
+    { "id": "etnicidade", "rotulo": "Etnicidade", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false },
+    { "id": "genero", "rotulo": "Gênero", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false, "exemplos": ["Male", "Female"] },
+    { "id": "image_quality", "rotulo": "Qualidade da Imagem (%)", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false, "exemplos": ["62%", "51%"] },
+    { "id": "tecnico", "rotulo": "Técnico/Operador", "categoria": "identificacao", "tipo": "texto", "obrigatorio": false },
+
+    { "id": "disc_area_od", "rotulo": "Área do Disco (Disc Area) - OD", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false, "unidade": "mm²", "origem": "DISC REPORT - Disc Topography table" },
+    { "id": "disc_area_os", "rotulo": "Área do Disco (Disc Area) - OS", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false, "unidade": "mm²" },
+    { "id": "cup_area_od", "rotulo": "Área do Cálice (Cup Area) - OD", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false, "unidade": "mm²" },
+    { "id": "cup_area_os", "rotulo": "Área do Cálice (Cup Area) - OS", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false, "unidade": "mm²" },
+    { "id": "rim_area_od", "rotulo": "Área do Rebordo (Rim Area) - OD", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false, "unidade": "mm²" },
+    { "id": "rim_area_os", "rotulo": "Área do Rebordo (Rim Area) - OS", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false, "unidade": "mm²" },
+    { "id": "cd_area_ratio_od", "rotulo": "Relação C/D por Área (C/D Area Ratio) - OD", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false, "origem": "Disc Topography table" },
+    { "id": "cd_area_ratio_os", "rotulo": "Relação C/D por Área (C/D Area Ratio) - OS", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false },
+    { "id": "linear_cdr_od", "rotulo": "Relação C/D Linear (Linear CDR) - OD", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false },
+    { "id": "linear_cdr_os", "rotulo": "Relação C/D Linear (Linear CDR) - OS", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false },
+    { "id": "vertical_cdr_od", "rotulo": "Relação C/D Vertical (Vertical CDR) - OD", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false },
+    { "id": "vertical_cdr_os", "rotulo": "Relação C/D Vertical (Vertical CDR) - OS", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false },
+    { "id": "cup_volume_od", "rotulo": "Volume do Cálice (Cup Volume) - OD", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false, "unidade": "mm³" },
+    { "id": "cup_volume_os", "rotulo": "Volume do Cálice (Cup Volume) - OS", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false, "unidade": "mm³" },
+    { "id": "rim_volume_od", "rotulo": "Volume do Rebordo (Rim Volume) - OD", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false, "unidade": "mm³" },
+    { "id": "rim_volume_os", "rotulo": "Volume do Rebordo (Rim Volume) - OS", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false, "unidade": "mm³" },
+    { "id": "horizontal_dd_od", "rotulo": "Diâmetro do Disco Horizontal (Horizontal D.D.) - OD", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false, "unidade": "mm" },
+    { "id": "horizontal_dd_os", "rotulo": "Diâmetro do Disco Horizontal (Horizontal D.D.) - OS", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false, "unidade": "mm" },
+    { "id": "vertical_dd_od", "rotulo": "Diâmetro do Disco Vertical (Vertical D.D.) - OD", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false, "unidade": "mm" },
+    { "id": "vertical_dd_os", "rotulo": "Diâmetro do Disco Vertical (Vertical D.D.) - OS", "categoria": "disco_topografia", "tipo": "numero", "obrigatorio": false, "unidade": "mm" },
+    { "id": "descricao_disco", "rotulo": "Descrição - Disco Topográfico (Ambos os Olhos)", "categoria": "disco_topografia", "tipo": "texto_longo", "obrigatorio": false },
+
+    { "id": "rnfl_media_od", "rotulo": "RNFL Média (Average Thickness Total) - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Average thickness RNFL(µm) - Total Thickness" },
+    { "id": "rnfl_media_os", "rotulo": "RNFL Média (Average Thickness Total) - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm" },
+    { "id": "rnfl_superior_od", "rotulo": "RNFL Superior (Superior) - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Average thickness RNFL(µm) - Superior" },
+    { "id": "rnfl_superior_os", "rotulo": "RNFL Superior (Superior) - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm" },
+    { "id": "rnfl_inferior_od", "rotulo": "RNFL Inferior (Inferior) - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "Average thickness RNFL(µm) - Inferior" },
+    { "id": "rnfl_inferior_os", "rotulo": "RNFL Inferior (Inferior) - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm" },
+    { "id": "rnfl_n_od", "rotulo": "RNFL Nasal (N) - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm", "origem": "RNFL Circular Tomogram / pie chart quadrants" },
+    { "id": "rnfl_n_os", "rotulo": "RNFL Nasal (N) - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm" },
+    { "id": "rnfl_s_od", "rotulo": "RNFL Superior (S) - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm" },
+    { "id": "rnfl_s_os", "rotulo": "RNFL Superior (S) - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm" },
+    { "id": "rnfl_t_od", "rotulo": "RNFL Temporal (T) - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm" },
+    { "id": "rnfl_t_os", "rotulo": "RNFL Temporal (T) - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm" },
+    { "id": "rnfl_i_od", "rotulo": "RNFL Inferior (I) - OD", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm" },
+    { "id": "rnfl_i_os", "rotulo": "RNFL Inferior (I) - OS", "categoria": "nervo_optico", "tipo": "numero", "obrigatorio": false, "unidade": "µm" },
+    { "id": "descricao_rnfl", "rotulo": "Descrição - RNFL Analysis (Ambos os Olhos)", "categoria": "nervo_optico", "tipo": "texto_longo", "obrigatorio": false }
+  ],
+
+  "campos_calculados_automaticamente": {
+    "descricao": "Estes campos NÃO são pedidos à IA — são calculados pelo próprio programa (nucleo_laudo.py), de forma determinística, a partir dos outros dados.",
+    "idade": "Calculada a partir de data_nascimento e data_exame.",
+    "protocolo": "Montada a partir dos nomes dos arquivos PDF fornecidos, usando 'protocolos_por_palavra_chave' definido acima.",
+    "data_geracao_laudo": "Data/hora em que o laudo foi gerado pelo programa.",
+    "nome_medico": "Vem de 'medico_responsavel.nome' neste arquivo.",
+    "crm_medico": "Vem de 'medico_responsavel.crm' neste arquivo."
+  },
+
+  "opcoes_extracao": {
+    "max_paginas_por_pdf": 1,
+    "dpi_imagem": 220,
+    "qualidade_jpeg": 85,
+    "max_tokens_resposta": 12288
+  }
+}

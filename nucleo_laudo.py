@@ -123,10 +123,15 @@ EQUIPAMENTOS_SUPORTADOS = {
         "config": "config_nidek.json",
         "template": "template_laudo_nidek.docx",
     },
-"topcon_maestro2": {
+"topcon_maestro2_wide": {
         "nome_exibicao": "Topcon Maestro2 3D Wide Report",
         "config": "config_oct_topcon_maestro2_wide.json",
         "template": "template_laudo_topcon_maestro2_wide.docx",
+    },
+    "topcon_maestro2_disc": {
+        "nome_exibicao": "Topcon Maestro2 3D Disc Report",
+        "config": "config_oct_topcon_maestro2_disc.json",
+        "template": "template_laudo_topcon_maestro2_disc.docx",
     },
     "pentacam": {
         "nome_exibicao": "Pentacam® (Oculus) — Tomografia de Córnea",
