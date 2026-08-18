@@ -99,85 +99,26 @@ class ErroGeracaoDocumento(ErroLaudoOCT):
 
 
 # ===================================================================
-# REGISTRO DE EQUIPAMENTOS SUPORTADOS
-# Cada entrada aponta para o arquivo de configuração e o template Word
-# daquele equipamento/exame. É usado pelos dois "front-ends" (main.py
-# e app_web.py) para montar o seletor de equipamento — assim os dois
-# aplicativos sempre mostram exatamente as mesmas opções.
-#
-# PRONTO PARA ADICIONAR UM NOVO EQUIPAMENTO (ex: Topcon Triton):
-#   1. Crie "config_<equipamento>.json" e "template_laudo_<equipamento>.docx"
-#      seguindo o padrão dos exemplos já existentes.
-#   2. Adicione uma linha abaixo, com uma chave curta (ex: "topcon").
-#   Pronto — o aplicativo de mesa e o aplicativo web já passam a
-#   oferecer essa opção automaticamente, sem mais nenhuma alteração.
-# ===================================================================
-EQUIPAMENTOS_SUPORTADOS = {
-    "zeiss": {
-        "nome_exibicao": "Zeiss Cirrus HD-OCT",
-        "config": "config_oct.json",
-        "template": "template_laudo.docx",
-    },
-    "nidek": {
-        "nome_exibicao": "Nidek RS-3000 Advance",
-        "config": "config_nidek.json",
-        "template": "template_laudo_nidek.docx",
-    },
-"topcon_maestro2": {
-        "nome_exibicao": "Topcon Maestro2 3D Wide Report",
-        "config": "config_oct_topcon_maestro2_wide.json",
-        "template": "template_laudo_topcon_maestro2_wide.docx",
-    },
-    "pentacam": {
-        "nome_exibicao": "Pentacam® (Oculus) — Tomografia de Córnea",
-        "config": "config_pentacam.json",
-        "template": "template_laudo_pentacam.docx",
-    },
-    "campo_visual": {
-        "nome_exibicao": "Octopus 600 (Haag-Streit) — Campo Visual",
-        "config": "config_campo_visual.json",
-        "template": "template_laudo_campo_visual.docx",
-    },
-}
-
-
-# ===================================================================
 # FUNÇÕES UTILITÁRIAS (datas, idade, protocolo)
 # Ficam fora das classes por serem funções puras/independentes,
 # reaproveitáveis por qualquer parte do sistema (e fáceis de testar).
 # ===================================================================
 
-# Formatos de data aceitos na entrada. IMPORTANTE: datas como "03/04/1978"
-# são AMBÍGUAS — podem ser 3 de abril (dd/mm) ou 4 de março (mm/dd) — e as
-# duas leituras costumam gerar uma idade "plausível" (às vezes só 1 ano de
-# diferença), então um erro de interpretação aqui não é óbvio de detectar
-# depois. Por isso a ORDEM em que os formatos são tentados importa muito:
-# cada equipamento tem um formato "nativo" conhecido (o que aparece
-# impresso no próprio exame), guardado em "formato_data_origem" no
-# config_*.json — ver ExamConfig.formato_data_origem. Tentamos esse
-# formato primeiro; os demais ficam como reserva, caso a IA já tenha
-# convertido a data por conta própria.
-_FORMATOS_POR_ORIGEM = {
-    # "MDY" = mês/dia/ano (padrão americano — ex: Zeiss Cirrus, Octopus 600)
-    "MDY": ("%m/%d/%Y", "%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"),
-    # "DMY" = dia/mês/ano (padrão brasileiro — usado como padrão quando o
-    # equipamento não declara "formato_data_origem" no config)
-    "DMY": ("%d/%m/%Y", "%m/%d/%Y", "%Y-%m-%d", "%d-%m-%Y"),
-}
+# Formatos de data aceitos na entrada, na ordem em que são tentados.
+_FORMATOS_DATA_ACEITOS = ("%d/%m/%Y", "%m/%d/%Y", "%Y-%m-%d", "%d-%m-%Y")
 
 
-def tentar_parsear_data(texto: str, formato_origem: str = "DMY"):
+def tentar_parsear_data(texto: str):
     """
-    Tenta interpretar uma string de data, priorizando o formato nativo
-    do equipamento de origem ('formato_origem': "MDY" ou "DMY") para
-    resolver corretamente datas ambíguas como "03/04/1978". Retorna um
-    objeto 'date' do Python em caso de sucesso, ou None se não conseguir.
+    Tenta interpretar uma string de data em vários formatos possíveis
+    (o equipamento Zeiss Cirrus exporta datas no formato americano
+    M/D/AAAA, mas a IA pode ou não convertê-las). Retorna um objeto
+    'date' do Python em caso de sucesso, ou None se não conseguir.
     """
     if not texto or not isinstance(texto, str):
         return None
     texto = texto.strip()
-    formatos = _FORMATOS_POR_ORIGEM.get(formato_origem, _FORMATOS_POR_ORIGEM["DMY"])
-    for formato in formatos:
+    for formato in _FORMATOS_DATA_ACEITOS:
         try:
             return datetime.strptime(texto, formato).date()
         except ValueError:
@@ -185,14 +126,14 @@ def tentar_parsear_data(texto: str, formato_origem: str = "DMY"):
     return None
 
 
-def normalizar_data(texto: str, formato_origem: str = "DMY") -> str:
+def normalizar_data(texto: str) -> str:
     """
-    Converte uma data para o formato brasileiro dd/mm/aaaa, interpretando
-    corretamente o formato nativo do equipamento de origem. Se não
-    conseguir interpretar, devolve o texto original sem alteração (para
-    não perder a informação).
+    Converte uma data para o formato brasileiro dd/mm/aaaa, aceitando
+    também o formato americano mm/dd/aaaa (comum nas exportações do
+    equipamento). Se não conseguir interpretar, devolve o texto original
+    sem alteração (para não perder a informação).
     """
-    data = tentar_parsear_data(texto, formato_origem)
+    data = tentar_parsear_data(texto)
     if data is None:
         return texto
     return data.strftime("%d/%m/%Y")
@@ -201,15 +142,12 @@ def normalizar_data(texto: str, formato_origem: str = "DMY") -> str:
 def calcular_idade(data_nascimento_texto: str, data_referencia_texto: str) -> str:
     """
     Calcula a idade (em anos completos) a partir da data de nascimento
-    e da data do exame. Espera que ambas as datas já tenham sido
-    normalizadas para dd/mm/aaaa (ver normalizar_data) antes de chegar
-    aqui. Retorna uma string como "73 anos", ou None se não for possível
-    calcular (datas ausentes/ilegíveis, ou idade fora de uma faixa
-    plausível) — nesse caso o campo simplesmente fica em branco no
-    laudo, sem travar o programa.
+    e da data do exame. Retorna uma string como "73 anos", ou None se
+    não for possível calcular (datas ausentes/ilegíveis) — nesse caso
+    o campo simplesmente fica em branco no laudo, sem travar o programa.
     """
-    nascimento = tentar_parsear_data(data_nascimento_texto, "DMY")
-    referencia = tentar_parsear_data(data_referencia_texto, "DMY") or date.today()
+    nascimento = tentar_parsear_data(data_nascimento_texto)
+    referencia = tentar_parsear_data(data_referencia_texto) or date.today()
     if nascimento is None:
         return None
     anos = referencia.year - nascimento.year
@@ -221,13 +159,10 @@ def calcular_idade(data_nascimento_texto: str, data_referencia_texto: str) -> st
     return f"{anos} anos"
 
 
-# Lista padrão de palavras-chave, usada apenas como último recurso se
-# um arquivo config_*.json não definir a própria lista em
-# "protocolos_por_palavra_chave" (ver ExamConfig.protocolos_por_palavra_chave
-# mais abaixo). Cada equipamento nomeia os arquivos de um jeito — por
-# isso o ideal é sempre definir essa lista dentro do config de cada
-# equipamento, não aqui no núcleo.
-_PROTOCOLOS_PADRAO_FALLBACK = [
+# Palavras-chave usadas para identificar, pelo nome do arquivo PDF
+# exportado pelo Zeiss Cirrus, quais protocolos de varredura foram
+# incluídos no exame. Fácil de estender para outros equipamentos/exames.
+_PROTOCOLOS_POR_PALAVRA_CHAVE = [
     ("Macular Thickness", "Espessura Macular (Retina)"),
     ("Ganglion Cell", "Complexo de Células Ganglionares (GCC)"),
     ("ONH and RNFL", "Nervo Óptico e RNFL (Glaucoma)"),
@@ -235,20 +170,16 @@ _PROTOCOLOS_PADRAO_FALLBACK = [
 ]
 
 
-def detectar_protocolo(nomes_arquivos: list, mapa_protocolos: list = None) -> str:
+def detectar_protocolo(nomes_arquivos: list) -> str:
     """
     Monta uma descrição textual de quais protocolos de varredura foram
     incluídos no exame, a partir dos nomes dos arquivos PDF selecionados
-    (cada equipamento nomeia os arquivos de forma padronizada, incluindo
-    o nome do protocolo). 'mapa_protocolos' é a lista de (palavra_chave,
-    descrição) vinda do config_*.json do equipamento em uso — se não for
-    informada, usa uma lista padrão de fallback. Se nada for reconhecido,
-    retorna None.
+    (o Zeiss Cirrus nomeia os arquivos de forma padronizada, incluindo o
+    nome do protocolo). Se nada for reconhecido, retorna None.
     """
-    mapa = mapa_protocolos or _PROTOCOLOS_PADRAO_FALLBACK
     protocolos_encontrados = []
     for nome in nomes_arquivos:
-        for palavra_chave, descricao in mapa:
+        for palavra_chave, descricao in _PROTOCOLOS_POR_PALAVRA_CHAVE:
             if palavra_chave.lower() in nome.lower() and descricao not in protocolos_encontrados:
                 protocolos_encontrados.append(descricao)
     if not protocolos_encontrados:
@@ -284,44 +215,16 @@ def completar_campos_automaticos(dados: dict, nomes_arquivos: list, config: "Exa
     """
     dados = dict(dados)
 
-    formato_origem = config.formato_data_origem
-    nascimento_bruto = dados.get("data_nascimento")
-    exame_bruto = dados.get("data_exame")
-
-    if nascimento_bruto:
-        dados["data_nascimento"] = normalizar_data(nascimento_bruto, formato_origem)
-    if exame_bruto:
-        dados["data_exame"] = normalizar_data(exame_bruto, formato_origem)
+    if dados.get("data_nascimento"):
+        dados["data_nascimento"] = normalizar_data(dados["data_nascimento"])
+    if dados.get("data_exame"):
+        dados["data_exame"] = normalizar_data(dados["data_exame"])
 
     idade_calculada = calcular_idade(dados.get("data_nascimento"), dados.get("data_exame"))
-
-    # Rede de segurança: se a idade deu implausível (None: negativa, maior
-    # que 130 anos, ou data ilegível) usando o formato nativo esperado do
-    # equipamento, tenta novamente assumindo que a IA já converteu a data
-    # sozinha para o formato oposto (isso acontece às vezes, apesar da
-    # instrução no prompt para transcrever a data literalmente). Só troca
-    # se essa segunda tentativa realmente resultar em uma idade válida —
-    # caso contrário mantém o resultado original (incluindo o "None").
-    if idade_calculada is None and (nascimento_bruto or exame_bruto):
-        formato_alternativo = "MDY" if formato_origem == "DMY" else "DMY"
-        nascimento_alt = (
-            normalizar_data(nascimento_bruto, formato_alternativo)
-            if nascimento_bruto else dados.get("data_nascimento")
-        )
-        exame_alt = (
-            normalizar_data(exame_bruto, formato_alternativo)
-            if exame_bruto else dados.get("data_exame")
-        )
-        idade_alt = calcular_idade(nascimento_alt, exame_alt)
-        if idade_alt is not None:
-            dados["data_nascimento"] = nascimento_alt
-            dados["data_exame"] = exame_alt
-            idade_calculada = idade_alt
-
     if idade_calculada:
         dados["idade"] = idade_calculada
 
-    protocolo = detectar_protocolo(nomes_arquivos, config.protocolos_por_palavra_chave)
+    protocolo = detectar_protocolo(nomes_arquivos)
     if protocolo:
         dados["protocolo"] = protocolo
 
@@ -395,47 +298,6 @@ class ExamConfig:
     def medico_responsavel(self) -> dict:
         return self.dados_config.get("medico_responsavel", {"nome": "", "crm": ""})
 
-    @property
-    def protocolos_por_palavra_chave(self) -> list:
-        """
-        Lista de (palavra_chave, descrição) usada para reconhecer, pelo
-        nome dos arquivos PDF, quais protocolos de varredura foram
-        incluídos no exame — específica de cada equipamento/config.
-        Formato no JSON: [["palavra", "descrição"], ...].
-        """
-        pares = self.dados_config.get("protocolos_por_palavra_chave", [])
-        return [tuple(par) for par in pares]
-
-    @property
-    def palavras_chave_verificacao(self) -> list:
-        """
-        Lista de palavras-chave (em minúsculas) que devem aparecer no
-        texto do campo 'equipamento' lido pela IA diretamente do exame,
-        usada como confirmação de que os PDFs enviados realmente são
-        deste equipamento — proteção contra o usuário selecionar o
-        equipamento errado no seletor (ex: enviar PDFs do Pentacam com
-        'Zeiss Cirrus' escolhido no aplicativo). Ver ValidadorDados.
-        """
-        return [p.lower() for p in self.dados_config.get("palavras_chave_verificacao", [])]
-
-    @property
-    def formato_data_origem(self) -> str:
-        """
-        Formato nativo em que ESTE equipamento imprime as datas no PDF do
-        exame: "MDY" (mês/dia/ano — padrão americano, ex: Zeiss Cirrus e
-        Octopus 600) ou "DMY" (dia/mês/ano — padrão brasileiro, usado como
-        valor padrão quando o config não declara isso explicitamente).
-
-        Isso existe porque datas como "03/04/1978" são ambíguas (podem
-        ser 3 de abril ou 4 de março) e as duas leituras costumam gerar
-        uma idade "plausível" — então, sem saber o formato nativo de cada
-        equipamento, o sistema não tinha como saber qual interpretação
-        estava correta, e já calculou idade errada por causa disso. Ver
-        tentar_parsear_data/normalizar_data/completar_campos_automaticos.
-        """
-        valor = self.dados_config.get("formato_data_origem", "DMY")
-        return valor if valor in ("MDY", "DMY") else "DMY"
-
     # ---------------- Métodos utilitários ----------------
     def obter_campo(self, campo_id: str) -> dict:
         """Retorna a definição de um campo específico pelo seu id."""
@@ -491,14 +353,7 @@ class ExamConfig:
             "cada campo devem ser lidos, conforme indicado entre parênteses em cada campo acima.\n"
             "5. Números devem ser retornados sem unidade (a unidade já é conhecida pelo sistema) e "
             "usando ponto como separador decimal (ex: 0.63, não 0,63).\n"
-            "6. Para os campos de data, transcreva EXATAMENTE os números como aparecem "
-            "impressos no exame, na mesma ordem (dia/mês/ano ou mês/dia/ano, o que for "
-            "impresso) e separados por '/'. NÃO tente reordenar ou converter dia e mês — "
-            "mesmo que o resultado pareça estranho, apenas copie os números exibidos. "
-            "O sistema já sabe o formato nativo deste equipamento e faz essa conversão "
-            "sozinho depois, de forma confiável; se a IA tentar converter, corre o risco "
-            "de errar em datas ambíguas (ex: '03/04/1978' pode ser 3 de abril ou 4 de "
-            "março) e isso já causou cálculo de idade errado no passado.\n"
+            "6. Datas devem ser retornadas no formato dd/mm/aaaa.\n"
             "7. Não faça diagnóstico nem interpretação clínica: apenas transcreva os dados exibidos.\n\n"
             f"Formato exato esperado (chaves, com valores de exemplo nulos):\n{exemplo_json_texto}"
         )
@@ -540,14 +395,6 @@ class PDFExtractor:
         self.dpi_imagem = opcoes.get("dpi_imagem", 200)
         self.max_paginas_por_pdf = opcoes.get("max_paginas_por_pdf", 2)
         self.max_tokens_resposta = opcoes.get("max_tokens_resposta", 3072)
-        # As imagens são enviadas em JPEG (não PNG): mapas/gráficos de OCT
-        # são cheios de gradientes coloridos, que o PNG comprime muito mal
-        # (arquivos de 4-6 MB por página não é incomum) — isso pode fazer o
-        # pedido ultrapassar o limite de tamanho da API da Anthropic quando
-        # o exame tem vários PDFs (erro HTTP 413 "request_too_large"). Em
-        # JPEG, com qualidade alta, o mesmo conteúdo fica 5-7x menor sem
-        # perda perceptível de legibilidade dos números.
-        self.qualidade_jpeg = opcoes.get("qualidade_jpeg", 85)
 
         chave = chave_api or os.environ.get("ANTHROPIC_API_KEY")
         if not chave:
@@ -571,12 +418,9 @@ class PDFExtractor:
 
     def _converter_paginas_em_imagens(self, caminho_pdf: Path) -> list:
         """
-        Converte as páginas do PDF em imagens JPEG (base64), pois a
+        Converte as páginas do PDF em imagens PNG (base64), pois a
         maior parte dos valores de um exame de OCT aparece dentro de
         mapas/gráficos coloridos (imagem), não como texto selecionável.
-        JPEG é usado em vez de PNG por comprimir muito melhor esse tipo
-        de conteúdo (gradientes de cor), mantendo o pedido dentro do
-        limite de tamanho da API mesmo com vários PDFs no mesmo exame.
         """
         imagens_base64 = []
         try:
@@ -587,7 +431,7 @@ class PDFExtractor:
                     if indice >= self.max_paginas_por_pdf:
                         break
                     pixmap = pagina.get_pixmap(matrix=matriz)
-                    imagem_bytes = pixmap.tobytes("jpg", jpg_quality=self.qualidade_jpeg)
+                    imagem_bytes = pixmap.tobytes("png")
                     imagens_base64.append(base64.b64encode(imagem_bytes).decode("utf-8"))
             return imagens_base64
         except Exception as erro:
@@ -595,7 +439,7 @@ class PDFExtractor:
                 f"Falha ao converter as páginas do PDF '{caminho_pdf.name}' em imagem: {erro}"
             )
 
-    def _parsear_json(self, texto_resposta: str, motivo_parada: str = None) -> dict:
+    def _parsear_json(self, texto_resposta: str) -> dict:
         """Extrai e valida o bloco JSON contido na resposta da IA."""
         texto = texto_resposta.strip()
 
@@ -608,51 +452,17 @@ class PDFExtractor:
         inicio = texto.find("{")
         fim = texto.rfind("}")
         if inicio == -1 or fim == -1:
-            # Diagnóstico: mostra um trecho da resposta real da IA (ou avisa
-            # se veio vazia), para dar pistas concretas do que aconteceu —
-            # em vez de só uma mensagem genérica.
-            if not texto:
-                detalhe = "A IA devolveu uma resposta vazia (nenhum texto)."
-            else:
-                trecho = texto[:600]
-                detalhe = f"Texto recebido da IA (trecho, para diagnóstico):\n\"{trecho}\""
-
-            dica_parada = ""
-            if motivo_parada and motivo_parada != "end_turn":
-                dica_parada = (
-                    f"\n\nMotivo de parada informado pela API: '{motivo_parada}'. "
-                    + (
-                        "Isso normalmente indica que a resposta foi cortada por atingir "
-                        "o limite de tokens — tente novamente enviando menos PDFs de uma "
-                        "vez, ou aumente 'max_tokens_resposta' no arquivo de configuração."
-                        if motivo_parada == "max_tokens"
-                        else "Verifique se o pedido não foi bloqueado por algum filtro de segurança."
-                    )
-                )
-
             raise ErroExtracaoPDF(
                 "A resposta da IA não contém um JSON reconhecível. "
-                "Tente novamente ou verifique a qualidade dos PDFs.\n\n"
-                f"{detalhe}{dica_parada}"
+                "Tente novamente ou verifique a qualidade dos PDFs."
             )
 
         bloco_json = texto[inicio: fim + 1]
         try:
             return json.loads(bloco_json)
         except json.JSONDecodeError as erro:
-            trecho = bloco_json[-400:] if len(bloco_json) > 400 else bloco_json
-            dica_parada = ""
-            if motivo_parada == "max_tokens":
-                dica_parada = (
-                    "\n\nA resposta parece ter sido cortada por atingir o limite de "
-                    "tokens (max_tokens) — tente novamente enviando menos PDFs de uma "
-                    "vez, ou aumente 'max_tokens_resposta' no arquivo de configuração "
-                    "deste equipamento."
-                )
             raise ErroExtracaoPDF(
-                f"Não foi possível interpretar o JSON retornado pela IA: {erro}\n\n"
-                f"Final do texto recebido (para diagnóstico):\n\"...{trecho}\""
-                f"{dica_parada}"
+                f"Não foi possível interpretar o JSON retornado pela IA: {erro}"
             )
 
     def extrair_dados(self, caminhos_pdfs) -> dict:
@@ -695,35 +505,10 @@ class PDFExtractor:
                     "type": "image",
                     "source": {
                         "type": "base64",
-                        "media_type": "image/jpeg",
+                        "media_type": "image/png",
                         "data": imagem_b64,
                     },
                 })
-
-        # Verificação proativa de tamanho: a API da Anthropic rejeita
-        # pedidos acima de um certo tamanho (erro HTTP 413
-        # "request_too_large"). Em vez de deixar o usuário receber esse
-        # erro técnico sem explicação, avisamos antes com uma sugestão
-        # prática (reduzir a resolução das imagens ou dividir o exame em
-        # duas gerações). O limite abaixo (25 MB de conteúdo base64) fica
-        # com folga do limite real da API, já que o texto do prompt e a
-        # própria requisição HTTP somam um pouco mais por cima.
-        tamanho_estimado_bytes = sum(
-            len(bloco.get("source", {}).get("data", "")) for bloco in conteudo_mensagem
-            if bloco.get("type") == "image"
-        )
-        if tamanho_estimado_bytes > 25_000_000:
-            raise ErroExtracaoPDF(
-                f"Os PDFs selecionados, convertidos em imagem, somam cerca de "
-                f"{tamanho_estimado_bytes / 1_000_000:.0f} MB — isso provavelmente "
-                "ultrapassa o limite de tamanho de pedido da API da Anthropic e "
-                "resultaria em erro 'request_too_large'.\n\n"
-                "Sugestões: (1) gere o laudo em duas etapas, selecionando menos "
-                "PDFs de cada vez e completando os campos manualmente depois, ou "
-                "(2) reduza o valor de 'dpi_imagem' no arquivo de configuração "
-                "deste equipamento (ex: de 220 para 150) para diminuir o tamanho "
-                "das imagens enviadas."
-            )
 
         try:
             resposta = self.cliente.messages.create(
@@ -740,8 +525,7 @@ class PDFExtractor:
         texto_resposta = "".join(
             bloco.text for bloco in resposta.content if hasattr(bloco, "text")
         )
-        motivo_parada = getattr(resposta, "stop_reason", None)
-        return self._parsear_json(texto_resposta, motivo_parada=motivo_parada)
+        return self._parsear_json(texto_resposta)
 
 
 # ===================================================================
@@ -761,8 +545,6 @@ class ValidadorDados:
         campo obrigatório estiver ausente. Retorna uma lista de avisos
         (não bloqueantes) para inconsistências menores.
         """
-        self._verificar_equipamento_correto(dados)
-
         campos_faltantes = []
         for campo_id in self.config.campos_obrigatorios():
             valor = dados.get(campo_id)
@@ -790,43 +572,6 @@ class ValidadorDados:
                         f"esperado {valores_permitidos}. Confira manualmente."
                     )
         return avisos
-
-    def _verificar_equipamento_correto(self, dados: dict):
-        """
-        Confere se o texto de identificação do equipamento, lido pela IA
-        diretamente das imagens do exame (campo 'equipamento'), é
-        compatível com o equipamento selecionado no aplicativo. Isso
-        evita que um exame de um equipamento (ex: Pentacam) seja
-        processado com o modelo/config de outro (ex: Zeiss Cirrus) só
-        porque o usuário esqueceu de trocar o seletor — nesse caso, os
-        campos clínicos ficam todos em branco no laudo, o que é confuso
-        e só é percebido depois de já ter sido gerado.
-
-        Se o exame não tiver essa informação legível (campo vazio/null),
-        a verificação é pulada — não bloqueia o fluxo normal por causa
-        de uma imagem de baixa qualidade.
-        """
-        palavras_chave = self.config.palavras_chave_verificacao
-        if not palavras_chave:
-            return
-
-        texto_equipamento = str(dados.get("equipamento") or "").strip()
-        if not texto_equipamento or texto_equipamento.lower() == "null":
-            return
-
-        texto_lower = texto_equipamento.lower()
-        if any(palavra in texto_lower for palavra in palavras_chave):
-            return
-
-        raise ErroValidacaoDados(
-            f"Os PDFs selecionados podem não ser do equipamento escolhido "
-            f"('{self.config.nome_exibicao}'). O texto de identificação do "
-            f"equipamento lido dentro do próprio exame foi: '{texto_equipamento}'.\n\n"
-            "Verifique se você selecionou o equipamento correto no seletor do "
-            "aplicativo antes de gerar o laudo (ex: se o exame é do Pentacam, "
-            "selecione 'Pentacam® (Oculus)', não 'Zeiss Cirrus HD-OCT' ou "
-            "'Nidek RS-3000 Advance'), e gere o laudo novamente."
-        )
 
 
 # ===================================================================
